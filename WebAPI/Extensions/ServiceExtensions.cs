@@ -29,7 +29,7 @@ namespace WebAPI.Extensions {
 				options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 				options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
 			}).AddJwtBearer(options => {
-				options.SaveToken = true;
+				options.SaveToken = false;
 
 				options.TokenValidationParameters = new TokenValidationParameters {
 					ValidateIssuer = true,

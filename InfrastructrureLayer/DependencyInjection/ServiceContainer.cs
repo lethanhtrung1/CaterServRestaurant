@@ -1,7 +1,11 @@
 ﻿using ApplicationLayer.Common.Consumer;
+using ApplicationLayer.Interfaces;
 using ApplicationLayer.Logging;
 using ApplicationLayer.Options;
+using DomainLayer.Common;
 using DomainLayer.Entites;
+using InfrastructrureLayer.Authentication;
+using InfrastructrureLayer.Common;
 using InfrastructrureLayer.Data;
 using InfrastructrureLayer.Logging;
 using InfrastructrureLayer.Services;
@@ -42,6 +46,10 @@ namespace InfrastructrureLayer.DependencyInjection {
 				throw new InvalidOperationException("Email Options are not configured correctly.");
 			}
 			services.AddSingleton(emailOptions);
+
+			services.AddScoped<IAuthService, AuthService>();
+			services.AddScoped<ITokenService, TokenService>();
+			services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 			return services;
 		}
