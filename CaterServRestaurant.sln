@@ -5,13 +5,13 @@ VisualStudioVersion = 17.11.35312.102
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{A03ABD2D-0381-4B97-8D4A-6B37BEA7F2AD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebAPI", "WebAPI\WebAPI.csproj", "{1BB87AE0-24AE-4D14-B77C-4BDC8C096186}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebAPI", "WebAPI\WebAPI.csproj", "{1BB87AE0-24AE-4D14-B77C-4BDC8C096186}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApplicationLayer", "ApplicationLayer\ApplicationLayer.csproj", "{CFE901D0-F15D-4630-8833-AEF811369957}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ApplicationLayer", "ApplicationLayer\ApplicationLayer.csproj", "{CFE901D0-F15D-4630-8833-AEF811369957}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DomainLayer", "DomainLayer\DomainLayer.csproj", "{DF8A0F80-4734-4D14-9AE9-135AAA74D3B8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DomainLayer", "DomainLayer\DomainLayer.csproj", "{DF8A0F80-4734-4D14-9AE9-135AAA74D3B8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InfrastructrureLayer", "InfrastructrureLayer\InfrastructrureLayer.csproj", "{01CC6D28-3BBD-4478-953D-D858A36CD8B7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InfrastructrureLayer", "InfrastructrureLayer\InfrastructrureLayer.csproj", "{01CC6D28-3BBD-4478-953D-D858A36CD8B7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

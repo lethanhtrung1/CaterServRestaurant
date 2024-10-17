@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using DomainLayer.Common;
+using DomainLayer.Entites;
 
 namespace DomainLayer.Repositories {
-	public interface IRefreshTokenRepository {
+	public interface IRefreshTokenRepository : IRepositoryBase<RefreshToken> {
 	}
 }
