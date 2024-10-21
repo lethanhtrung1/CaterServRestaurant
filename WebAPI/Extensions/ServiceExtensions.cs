@@ -41,6 +41,16 @@ namespace WebAPI.Extensions {
 					IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key)),
 					ClockSkew = TimeSpan.Zero,
 				};
+				//// Use HttpOnly Cookie
+				//options.Events = new JwtBearerEvents {
+				//	OnMessageReceived = context => {
+				//		context.Request.Cookies.TryGetValue("accessToken", out var accessToken);
+				//		if (!string.IsNullOrEmpty(accessToken)) {
+				//			context.Token = accessToken;
+				//		}
+				//		return Task.CompletedTask;
+				//	}
+				//};
 			});
 
 			return services;

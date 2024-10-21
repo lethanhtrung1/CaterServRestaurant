@@ -27,5 +27,13 @@ namespace WebAPI.Controllers {
 			}
 			return Ok(await _authService.Register(request));
 		}
+
+		[HttpPost("identity/refresh-token")]
+		public async Task<IActionResult> RefreshToken(TokenRequestDto request) {
+			if (request == null) {
+				return BadRequest("Invalid request");
+			}
+			return Ok(await _authService.RefreshToken(request));
+		}
 	}
 }

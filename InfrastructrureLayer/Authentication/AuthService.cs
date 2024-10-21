@@ -50,6 +50,20 @@ namespace InfrastructrureLayer.Authentication {
 			}
 		}
 
+		public async Task<AuthResponseDto> RefreshToken(TokenRequestDto request) {
+			try {
+				var token = await _tokenService.RefreshToken(request);
+
+				return new AuthResponseDto() {
+					Success = true,
+					Message = "Refresh Token successfully"
+				};
+			} catch (Exception ex) {
+				_logger.LogExceptions(ex);
+				return new AuthResponseDto(false, $"Internal server error occurred: {ex.Message}");
+			}
+		}
+
 		public async Task<AuthResponseDto> Register(RegistrationRequestDto request) {
 			try {
 				var checkUserExist = await _userManager.FindByEmailAsync(request.Email);

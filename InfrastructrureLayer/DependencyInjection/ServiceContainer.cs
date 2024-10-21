@@ -9,6 +9,7 @@ using InfrastructrureLayer.Common;
 using InfrastructrureLayer.Data;
 using InfrastructrureLayer.Logging;
 using InfrastructrureLayer.Services;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,8 +23,16 @@ namespace InfrastructrureLayer.DependencyInjection {
 				options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"));
 			});
 
-			services.AddIdentity<ApplicationUser, UserRole>()
-				.AddEntityFrameworkStores<AppDbContext>();
+			services.AddIdentity<ApplicationUser, UserRole>(options => {
+				options.Password.RequireDigit = true;
+				options.Password.RequiredLength = 8;
+				options.Password.RequiredUniqueChars = 2;
+				options.Password.RequireNonAlphanumeric = true;
+				options.Password.RequireUppercase = true;
+				options.Password.RequireLowercase = true;
+			})
+				.AddEntityFrameworkStores<AppDbContext>()
+				.AddDefaultTokenProviders();
 
 			// Configure logging
 			Log.Logger = new LoggerConfiguration()
