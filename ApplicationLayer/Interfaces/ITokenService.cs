@@ -6,7 +6,7 @@ namespace ApplicationLayer.Interfaces {
 	public interface ITokenService {
 		Task<TokenResponseDto> GenerateToken(ApplicationUser user, bool populateExp);
 		Task<TokenResponseDto> RefreshToken(TokenRequestDto token);
-		Task RevokeRefreshToken(Guid userId, string token);
+		Task RevokeRefreshToken(string userId, string token);
 		void SetTokensInsideCookie(TokenRequestDto token);
 	}
 }

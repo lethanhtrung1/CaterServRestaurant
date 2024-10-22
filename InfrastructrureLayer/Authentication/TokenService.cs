@@ -3,6 +3,7 @@ using ApplicationLayer.DTOs.Responses.Account;
 using ApplicationLayer.Interfaces;
 using DomainLayer.Common;
 using DomainLayer.Entites;
+using DomainLayer.Exceptions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
@@ -51,16 +52,14 @@ namespace InfrastructrureLayer.Authentication {
 
 			var token = jwtTokenHandler.CreateToken(tokenDescriptor);
 
-			if (populateExp) {
+			if (populateExp) { // Genrate new RefreshToken
 				var newRefreshToken = GenerateRefreshToken();
 				var newRefreshTokenToDb = new RefreshToken() {
+					UserId = user.Id,
 					JwtId = token.Id,
 					Token = newRefreshToken,
-					AddedDate = DateTime.Now,
-					ExpiryDate = DateTime.Now.AddDays(7),
-					IsUsed = false,
-					IsRevoked = false,
-					UserId = user.Id,
+					AddedDate = DateTime.UtcNow,
+					ExpiryDate = DateTime.UtcNow.AddDays(10),
 				};
 				await _unitOfWork.RefreshToken.AddAsync(newRefreshTokenToDb);
 				await _unitOfWork.SaveChangeAsync();
@@ -68,49 +67,51 @@ namespace InfrastructrureLayer.Authentication {
 
 			var accessToken = jwtTokenHandler.WriteToken(token);
 			var refreshToken = await _unitOfWork.RefreshToken
-				.GetAsync(x => x.UserId == user.Id && x.IsUsed == false && x.IsRevoked == false);
+				.GetAsync(x => x.UserId == user.Id && x.IsActive);
+
 			return new TokenResponseDto(accessToken, refreshToken.Token);
 		}
 
 		private string GenerateRefreshToken() {
 			var randomNumber = new byte[32];
-			using (var rng = RandomNumberGenerator.Create()) {
-				rng.GetBytes(randomNumber);
+			using (var generator = RandomNumberGenerator.Create()) {
+				generator.GetBytes(randomNumber);
 				return Convert.ToBase64String(randomNumber);
 			}
 		}
 
 		public async Task<TokenResponseDto> RefreshToken(TokenRequestDto token) {
 			try {
-				await _unitOfWork.RefreshToken.BeginTransactionAsync();
-
 				var principal = GetPrincipalFromExpiredToken(token.AccessToken);
+				var userId = principal.Claims.FirstOrDefault(x => x.Type == "Id")!.Value;
 
-				var storedToken = await _unitOfWork.RefreshToken
-					.GetAsync(x => x.Token == token.RefreshToken && x.IsUsed == false && x.IsRevoked == false);
+				var refreshToken = await _unitOfWork.RefreshToken
+					.GetAsync(x => x.Token == token.RefreshToken && x.IsActive);
 
-				if (storedToken is null || storedToken.ExpiryDate < DateTime.Now) {
+				if (refreshToken is null) {
 					throw new SecurityTokenException("Invalid Token");
 				}
 
-				var jti = principal.Claims.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Jti)!.Value;
-				if (storedToken.JwtId != jti) {
-					throw new SecurityTokenException("Invalid token");
+				if (refreshToken.ExpiryDate < DateTime.UtcNow) {
+					// if refresh token is expired -> revoked refresh token
+					await RevokeRefreshToken(userId, refreshToken.Token);
+					throw new CustomDomainException("Refresh Token expired. Please login again");
 				}
 
-				storedToken.IsUsed = true;
-				await _unitOfWork.RefreshToken.UpdateAsync(storedToken);
-				await _unitOfWork.SaveChangeAsync();
-
-				await _unitOfWork.RefreshToken.EndTransactionAsync();
-
-				var userId = principal.Claims.FirstOrDefault(x => x.Type == "Id")!.Value;
+				var jti = principal.Claims.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Jti)!.Value;
+				if (refreshToken.JwtId != jti) {
+					throw new SecurityTokenException("Invalid Token");
+				}
+				
 				var user = await _userManager.FindByIdAsync(userId);
 
 				return await GenerateToken(user!, populateExp: false);
-			} catch (Exception) {
-				await _unitOfWork.RefreshToken.RollBackTransactionAsync();
-				throw;
+			} catch (CustomDomainException) {
+				throw new UnauthorizedAccessException("Refresh Token expired. Please login again");
+			} catch(SecurityTokenException) {
+				throw new SecurityTokenException("Invalid Token");
+			} catch (Exception ex) {
+				throw new Exception($"Internal server error occurred: {ex.Message}");
 			}
 		}
 
@@ -136,14 +137,21 @@ namespace InfrastructrureLayer.Authentication {
 			return principal;
 		}
 
-		public async Task RevokeRefreshToken(Guid userId, string token) {
-			var refreshToken = await _unitOfWork.RefreshToken.GetAsync(x => x.Token == token);
-			if (refreshToken == null || refreshToken.UserId != userId.ToString()) {
-				throw new SecurityTokenException();
+		public async Task RevokeRefreshToken(string userId, string token) {
+			try {
+				var refreshToken = await _unitOfWork.RefreshToken.GetAsync(x => x.Token == token);
+
+				// // return false if no user found with token
+				if (refreshToken == null || refreshToken.UserId != userId.ToString()) {
+					throw new SecurityTokenException("Invalid Token");
+				}
+
+				refreshToken.RevokedDate = DateTime.UtcNow;
+				await _unitOfWork.RefreshToken.UpdateAsync(refreshToken);
+				await _unitOfWork.SaveChangeAsync();
+			} catch (Exception ex) {
+				throw new Exception($"Internal server error occurred: {ex.Message}");
 			}
-			refreshToken.IsRevoked = true;
-			await _unitOfWork.RefreshToken.UpdateAsync(refreshToken);
-			await _unitOfWork.SaveChangeAsync();
 		}
 
 		public void SetTokensInsideCookie(TokenRequestDto token) {
