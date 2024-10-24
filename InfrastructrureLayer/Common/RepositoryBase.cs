@@ -8,7 +8,7 @@ using System.Linq.Expressions;
 namespace InfrastructrureLayer.Common {
 	public class RepositoryBase<T> : IRepositoryBase<T> where T : BaseEntity {
 		private readonly AppDbContext _dbContext;
-		private DbSet<T> _dbSet;
+		private readonly DbSet<T> _dbSet;
 
 		public RepositoryBase(AppDbContext dbContext) {
 			_dbContext = dbContext;

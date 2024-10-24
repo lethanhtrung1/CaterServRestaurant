@@ -14,6 +14,13 @@ namespace InfrastructrureLayer.Data {
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder) {
 			base.OnModelCreating(modelBuilder);
+
+			modelBuilder.Entity<RefreshToken>(entity => {
+				entity.HasOne(d => d.User)
+					.WithMany(p => p.RefreshTokens)
+					.HasForeignKey(d => d.UserId)
+					.OnDelete(DeleteBehavior.Cascade);
+			});
 		}
 	}
 }

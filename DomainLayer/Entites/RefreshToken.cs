@@ -7,7 +7,7 @@
 		public DateTime ExpiryDate { get; set; }
 		public DateTime? RevokedDate { get; set; }
 		public bool IsExpired => DateTime.UtcNow >= ExpiryDate;
-		//public bool IsRevoked => RevokedDate != null;
 		public bool IsActive => !IsExpired && RevokedDate == null;
+		public virtual ApplicationUser User { get; set; }
 	}
 }

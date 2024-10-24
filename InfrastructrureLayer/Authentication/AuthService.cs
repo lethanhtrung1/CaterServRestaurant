@@ -31,12 +31,13 @@ namespace InfrastructrureLayer.Authentication {
 				}
 
 				var jwtToken = await _tokenService.GenerateToken(user, populateExp: true);
-
-				//var tokenDto = new TokenRequestDto {
-				//	AccessToken = jwtToken.AccessToken,
-				//	RefreshToken = jwtToken.RefreshToken,
-				//};
-				//_tokenService.SetTokensInsideCookie(tokenDto);
+				
+				// store refresh token as cookies
+				var tokenDto = new TokenRequestDto {
+					AccessToken = jwtToken.AccessToken,
+					RefreshToken = jwtToken.RefreshToken,
+				};
+				_tokenService.SetTokensInsideCookie(tokenDto);
 
 				return new AuthResponseDto() {
 					Success = true,

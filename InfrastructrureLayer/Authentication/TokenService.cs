@@ -1,6 +1,7 @@
 ﻿using ApplicationLayer.DTOs.Requests.Account;
 using ApplicationLayer.DTOs.Responses.Account;
 using ApplicationLayer.Interfaces;
+using ApplicationLayer.Logging;
 using DomainLayer.Common;
 using DomainLayer.Entites;
 using DomainLayer.Exceptions;
@@ -20,14 +21,17 @@ namespace InfrastructrureLayer.Authentication {
 		private readonly IConfigurationSection _jwtOptions;
 		private readonly IHttpContextAccessor _httpContextAccessor;
 		private readonly UserManager<ApplicationUser> _userManager;
+		private readonly ILogException _logger;
 
 		public TokenService(IUnitOfWork unitOfWork, IConfiguration configuration,
-			IHttpContextAccessor httpContextAccessor, UserManager<ApplicationUser> userManager) {
+			IHttpContextAccessor httpContextAccessor, UserManager<ApplicationUser> userManager,
+			ILogException logger) {
 			_unitOfWork = unitOfWork;
 			_configuration = configuration;
 			_jwtOptions = _configuration.GetSection("AuthJwt");
 			_httpContextAccessor = httpContextAccessor;
 			_userManager = userManager;
+			_logger = logger;
 		}
 
 		public async Task<TokenResponseDto> GenerateToken(ApplicationUser user, bool populateExp) {
@@ -102,39 +106,46 @@ namespace InfrastructrureLayer.Authentication {
 				if (refreshToken.JwtId != jti) {
 					throw new SecurityTokenException("Invalid Token");
 				}
-				
+
 				var user = await _userManager.FindByIdAsync(userId);
 
 				return await GenerateToken(user!, populateExp: false);
 			} catch (CustomDomainException) {
 				throw new UnauthorizedAccessException("Refresh Token expired. Please login again");
-			} catch(SecurityTokenException) {
+			} catch (SecurityTokenException) {
+				_logger.LogExceptions($"Invalid token: {token.RefreshToken}");
 				throw new SecurityTokenException("Invalid Token");
 			} catch (Exception ex) {
+				_logger.LogExceptions(ex);
 				throw new Exception($"Internal server error occurred: {ex.Message}");
 			}
 		}
 
 		private ClaimsPrincipal GetPrincipalFromExpiredToken(string token) {
-			var tokenValidationParameters = new TokenValidationParameters {
-				ValidateIssuerSigningKey = true,
-				ValidateIssuer = true,
-				ValidateAudience = true,
-				ValidateLifetime = false, // don't care about the token's expiration date
-				IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions["Key"]!)),
-				ValidIssuer = _jwtOptions["Issuer"],
-				ValidAudience = _jwtOptions["Audience"]
-			};
+			try {
+				var tokenValidationParameters = new TokenValidationParameters {
+					ValidateIssuerSigningKey = true,
+					ValidateIssuer = true,
+					ValidateAudience = true,
+					ValidateLifetime = false, // don't care about the token's expiration date
+					IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions["Key"]!)),
+					ValidIssuer = _jwtOptions["Issuer"],
+					ValidAudience = _jwtOptions["Audience"]
+				};
 
-			var tokenHandler = new JwtSecurityTokenHandler();
-			SecurityToken securityToken;
-			var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out securityToken);
-			var jwtSecurityToken = securityToken as JwtSecurityToken;
-			if (jwtSecurityToken == null || !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase)) {
-				throw new SecurityTokenException("Invalid token");
+				var tokenHandler = new JwtSecurityTokenHandler();
+				SecurityToken securityToken;
+				var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out securityToken);
+				var jwtSecurityToken = securityToken as JwtSecurityToken;
+				if (jwtSecurityToken == null || !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase)) {
+					throw new SecurityTokenException("Invalid token");
+				}
+
+				return principal;
+			} catch (Exception ex) {
+				_logger.LogExceptions(ex);
+				throw new Exception($"Internal server error occurred: {ex.Message}");
 			}
-
-			return principal;
 		}
 
 		public async Task RevokeRefreshToken(string userId, string token) {
@@ -150,6 +161,7 @@ namespace InfrastructrureLayer.Authentication {
 				await _unitOfWork.RefreshToken.UpdateAsync(refreshToken);
 				await _unitOfWork.SaveChangeAsync();
 			} catch (Exception ex) {
+				_logger.LogExceptions(ex);
 				throw new Exception($"Internal server error occurred: {ex.Message}");
 			}
 		}
@@ -164,6 +176,7 @@ namespace InfrastructrureLayer.Authentication {
 					Secure = true,
 					SameSite = SameSiteMode.None,
 				});
+
 				context.Response.Cookies.Append("refreshToken", token.RefreshToken, new CookieOptions {
 					Expires = DateTimeOffset.UtcNow.AddDays(7),
 					HttpOnly = true,

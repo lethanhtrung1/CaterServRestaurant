@@ -42,15 +42,15 @@ namespace WebAPI.Extensions {
 					ClockSkew = TimeSpan.Zero,
 				};
 				//// Use HttpOnly Cookie
-				//options.Events = new JwtBearerEvents {
-				//	OnMessageReceived = context => {
-				//		context.Request.Cookies.TryGetValue("accessToken", out var accessToken);
-				//		if (!string.IsNullOrEmpty(accessToken)) {
-				//			context.Token = accessToken;
-				//		}
-				//		return Task.CompletedTask;
-				//	}
-				//};
+				options.Events = new JwtBearerEvents {
+					OnMessageReceived = context => {
+						context.Request.Cookies.TryGetValue("accessToken", out var accessToken);
+						if (!string.IsNullOrEmpty(accessToken)) {
+							context.Token = accessToken;
+						}
+						return Task.CompletedTask;
+					}
+				};
 			});
 
 			return services;

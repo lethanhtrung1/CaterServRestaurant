@@ -3,6 +3,8 @@
 namespace DomainLayer.Entites {
 	public class ApplicationUser : IdentityUser {
 		public string? Name { get; set; }
-		public List<RefreshToken> RefreshTokens { get; set; }
+		public virtual IEnumerable<RefreshToken>? RefreshTokens { get; set; }
+		public virtual IEnumerable<Booking>? Bookings { get; set; }
+		public UserProfile UserProfile { get; set; }
 	}
 }

@@ -9,6 +9,12 @@ namespace InfrastructrureLayer.Logging {
 			LogToDebugger(ex.Message);
 		}
 
+		public void LogExceptions(string message) {
+			LogToFile(message);
+			LogToConsole(message);
+			LogToDebugger(message);
+		}
+
 		public void LogToConsole(string message) => Log.Information(message);
 
 		public void LogToDebugger(string message) => Log.Warning(message);
