@@ -5,6 +5,8 @@
 		public bool IsAvailable { get; set; }
 		public Guid AreaId { get; set; }
 		public string AreaName { get; set; }
+
 		public virtual IEnumerable<BookingTable> BookingTables { get; set; }
+		public Meal Meal { get; set; }
 	}
 }
