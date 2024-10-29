@@ -23,7 +23,7 @@ namespace InfrastructrureLayer.Data {
 		public virtual DbSet<OrderDetail> OrderDetails { get; set; }
 		public virtual DbSet<Product> Products { get; set; }
 		public virtual DbSet<ProductImage> ProductImages { get; set; }
-		public virtual DbSet<Restaurant> Restaurants { get; set; }
+		//public virtual DbSet<Restaurant> Restaurants { get; set; }
 		public virtual DbSet<Table> Tables { get; set; }
 		public virtual DbSet<UserProfile> UserProfiles { get; set; }
 		public virtual DbSet<Meal> Meals { get; set; }
@@ -63,6 +63,18 @@ namespace InfrastructrureLayer.Data {
 				entity.HasMany(d => d.BookingTables)
 					.WithOne(p => p.Table)
 					.OnDelete(DeleteBehavior.Cascade);
+			});
+
+			modelBuilder.Entity<Product>(entity => {
+				entity.HasOne(d => d.Category)
+					.WithMany(p => p.Products)
+					.HasForeignKey(d => d.CategoryId)
+					.OnDelete(DeleteBehavior.NoAction);
+
+				entity.HasOne(d => d.Menu)
+					.WithMany(p => p.Products)
+					.HasForeignKey(d => d.MenuId)
+					.OnDelete(DeleteBehavior.NoAction);
 			});
 		}
 	}
