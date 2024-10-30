@@ -11,7 +11,7 @@ namespace InfrastructrureLayer.Data {
 		public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
 		public virtual DbSet<Booking> Bookings { get; set; }
 		public virtual DbSet<BookingTable> BookingsTables { get; set; }
-		public virtual DbSet<Branch> Branches { get; set; }
+		//public virtual DbSet<Branch> Branches { get; set; }
 		public virtual DbSet<Category> Categories { get; set; }
 		public virtual DbSet<Coupon> Coupons { get; set; }
 		public virtual DbSet<Invoice> Invoices { get; set; }

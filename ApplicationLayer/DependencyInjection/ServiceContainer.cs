@@ -1,4 +1,6 @@
-﻿using ApplicationLayer.MappingConfigs;
+﻿using ApplicationLayer.Interfaces;
+using ApplicationLayer.MappingConfigs;
+using ApplicationLayer.Services;
 using AutoMapper;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -10,6 +12,9 @@ namespace ApplicationLayer.DependencyInjection {
 			IMapper mapper = MappingExtension.RegisterMaps().CreateMapper();
 			services.AddSingleton(mapper);
 			services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+
+			// DI
+			services.AddScoped<ICategoryService, CategoryService>();
 
 			return services;
 		}

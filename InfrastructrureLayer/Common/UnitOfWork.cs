@@ -8,7 +8,7 @@ namespace InfrastructrureLayer.Common {
 		private readonly AppDbContext _dbContext;
 		public IBookingRepository Booking { get; set; }
 		public IBookingTableRepository BookingTable { get; set; }
-		public IBranchRepository Branch { get; set; }
+		//public IBranchRepository Branch { get; set; }
 		public ICategoryRepository Category { get; set; }
 		public ICouponRepository Coupon { get; set; }
 		public IInvoiceRepository Invoice { get; set; }
@@ -30,7 +30,7 @@ namespace InfrastructrureLayer.Common {
 			_dbContext = dbContext;
 			Booking = new BookingRepository(_dbContext);
 			BookingTable = new BookingTableRepository(_dbContext);
-			Branch = new BranchRepository(_dbContext);
+			//Branch = new BranchRepository(_dbContext);
 			Category = new CategoryRepository(_dbContext);
 			Coupon = new CouponRepository(_dbContext);
 			Invoice = new InvoiceRepository(_dbContext);

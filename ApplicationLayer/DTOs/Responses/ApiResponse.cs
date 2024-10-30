@@ -11,6 +11,7 @@
 		}
 
 		public ApiResponse(bool success, string message) {
+			Data = default;
 			Success = success;
 			Message = message;
 		}
