@@ -1,5 +1,6 @@
 using ApplicationLayer.DependencyInjection;
 using InfrastructrureLayer.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using WebAPI.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -37,6 +38,12 @@ if (app.Environment.IsDevelopment()) {
 app.UseApplicationPolicy();
 
 app.UseHttpsRedirection();
+
+app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions {
+	FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), @"Resources")),
+	RequestPath = new PathString("/Resources")
+});
 
 app.UseAuthentication();
 

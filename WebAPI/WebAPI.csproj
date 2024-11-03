@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <Folder Include="Logs\" />
+    <Folder Include="Resources\Images\" />
   </ItemGroup>
 
 </Project>
