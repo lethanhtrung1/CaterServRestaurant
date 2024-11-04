@@ -16,8 +16,8 @@ namespace InfrastructrureLayer.Data {
 		public virtual DbSet<Coupon> Coupons { get; set; }
 		public virtual DbSet<Invoice> Invoices { get; set; }
 		public virtual DbSet<InvoiceCoupon> InvoiceCoupons { get; set; }
-		public virtual DbSet<InvoiceDetail> InvoicesDetails { get; set; }
-		public virtual DbSet<InvoicePayment> InvoicesPayments { get; set; }
+		public virtual DbSet<InvoiceDetail> InvoiceDetails { get; set; }
+		public virtual DbSet<InvoicePayment> InvoicePayments { get; set; }
 		public virtual DbSet<Menu> Menus { get; set; }
 		public virtual DbSet<Order> Orders { get; set; }
 		public virtual DbSet<OrderDetail> OrderDetails { get; set; }
@@ -65,6 +65,16 @@ namespace InfrastructrureLayer.Data {
 					.OnDelete(DeleteBehavior.Cascade);
 			});
 
+			modelBuilder.Entity<Category>(entity => {
+				entity.HasMany(d => d.Products)
+					.WithOne(p => p.Category);
+			});
+
+			modelBuilder.Entity<Menu>(entity => {
+				entity.HasMany(d => d.Products)
+					.WithOne(p => p.Menu);
+			});
+
 			modelBuilder.Entity<Product>(entity => {
 				entity.HasOne(d => d.Category)
 					.WithMany(p => p.Products)
@@ -75,6 +85,81 @@ namespace InfrastructrureLayer.Data {
 					.WithMany(p => p.Products)
 					.HasForeignKey(d => d.MenuId)
 					.OnDelete(DeleteBehavior.NoAction);
+			});
+
+			modelBuilder.Entity<ProductImage>(entity => {
+				entity.HasOne(d => d.Product)
+					.WithMany(p => p.ProductImages)
+					.HasForeignKey(d => d.ProductId)
+					.OnDelete(DeleteBehavior.Cascade);
+			});
+
+			modelBuilder.Entity<Order>(entity => {
+				entity.HasOne(d => d.Invoice)
+					.WithOne(p => p.Order);
+
+				entity.HasOne(d => d.Customer)
+					.WithMany(p => p.Orders)
+					.HasForeignKey(d => d.CustomerId);
+			});
+
+			modelBuilder.Entity<OrderDetail>(entity => {
+				entity.HasOne(d => d.Order)
+					.WithMany(p => p.Details)
+					.HasForeignKey(d => d.OrderId)
+					.OnDelete(DeleteBehavior.Cascade);
+			});
+
+			modelBuilder.Entity<Invoice>(entity => {
+				entity.HasOne(d => d.Order)
+					.WithOne(p => p.Invoice)
+					.HasForeignKey<Invoice>(d => d.OrderId);
+
+				entity.HasMany(d => d.InvoiceDetails)
+					.WithOne(p => p.Invoice);
+
+				entity.HasOne(d => d.InvoiceCoupon)
+					.WithOne(p => p.Invoice);
+
+				entity.HasOne(d => d.InvoicePayment)
+					.WithOne(p => p.Invoice);
+			});
+
+			modelBuilder.Entity<InvoiceDetail>(entity => {
+				entity.HasOne(d => d.Invoice)
+					.WithMany(p => p.InvoiceDetails)
+					.HasForeignKey(d => d.InvoiceId)
+					.OnDelete(DeleteBehavior.Cascade);
+			});
+
+			modelBuilder.Entity<InvoiceCoupon>(entity => {
+				entity.HasOne(d => d.Invoice)
+					.WithOne(p => p.InvoiceCoupon)
+					.HasForeignKey<InvoiceCoupon>(d => d.InvoiceId)
+					.OnDelete(DeleteBehavior.Cascade);
+			});
+
+			modelBuilder.Entity<InvoicePayment>(entity => {
+				entity.HasOne(d => d.Invoice)
+					.WithOne(p => p.InvoicePayment)
+					.HasForeignKey<InvoicePayment>(d => d.InvoiceId)
+					.OnDelete(DeleteBehavior.Cascade);
+			});
+
+			modelBuilder.Entity<MealProduct>(entity => {
+				entity.HasOne(d => d.Meal)
+					.WithMany(p => p.MealProducts)
+					.HasForeignKey(d => d.MealId);
+
+				entity.HasOne(d => d.Product)
+					.WithMany(p => p.MealProducts)
+					.HasForeignKey(d => d.ProductId);
+			});
+
+			modelBuilder.Entity<UserProfile>(entity => {
+				entity.HasOne(d => d.User)
+					.WithOne(p => p.UserProfile)
+					.HasForeignKey<UserProfile>(d => d.UserId);
 			});
 		}
 	}

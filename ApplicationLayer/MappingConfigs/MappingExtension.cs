@@ -1,7 +1,9 @@
 ﻿using ApplicationLayer.DTOs.Requests.Category;
 using ApplicationLayer.DTOs.Requests.Menu;
+using ApplicationLayer.DTOs.Requests.Table;
 using ApplicationLayer.DTOs.Responses.Category;
 using ApplicationLayer.DTOs.Responses.Menu;
+using ApplicationLayer.DTOs.Responses.Table;
 using AutoMapper;
 using DomainLayer.Entites;
 
@@ -13,17 +15,18 @@ namespace ApplicationLayer.MappingConfigs {
 
 				config.CreateMap<Category, CategoryResponseDto>();
 				config.CreateMap<Menu, MenuResponse>();
+				config.CreateMap<Table, TableResponse>();
 
 				#endregion
-
 
 				#region RequestDto to Domain
 
 				config.CreateMap<CreateCategoryRequest, Category>();
 				config.CreateMap<UpdateCategoryRequest, Category>();
-
 				config.CreateMap<CreateMenuRequest, Menu>();
 				config.CreateMap<UpdateMenuRequest, Menu>();
+				config.CreateMap<CreateTableRequest, Table>();
+				config.CreateMap<UpdateTableRequest, Table>();
 
 				#endregion
 			});

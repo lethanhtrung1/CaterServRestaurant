@@ -12,10 +12,10 @@
 		/// Tiền khuyến mại
 		/// </summary>
 		public decimal PromotionAmount { get; set; }
-		public Guid OrderDetailId { get; set; }
+		//public Guid OrderDetailId { get; set; }
 
-		public Invoice? Invoice { get; set; }
-		public Product? Product { get; set; }
-		public OrderDetail? OrderDetail { get; set; }
+		public Invoice Invoice { get; set; }
+		public Product Product { get; set; }
+		//public OrderDetail OrderDetail { get; set; }
 	}
 }

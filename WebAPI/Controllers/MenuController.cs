@@ -23,7 +23,7 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpGet]
-		public async Task<IActionResult> GetList(PagingRequest request) {
+		public async Task<IActionResult> GetList([FromQuery] PagingRequest request) {
 			if (request == null) {
 				return BadRequest("Invalid client request");
 			}

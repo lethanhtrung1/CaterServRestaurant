@@ -1,6 +1,6 @@
 ﻿namespace DomainLayer.Entites {
 	public class Invoice : BaseEntity {
-		public Guid BranchId { get; set; }
+		//public Guid BranchId { get; set; }
 		public Guid OrderId { get; set; }
 
 		/// <summary>
@@ -83,8 +83,8 @@
 		/// </summary>
 		public int AddPoint { get; set; }
 
-		public Branch? Branch { get; set; }
-		public Order? Order { get; set; }
+		//public Branch? Branch { get; set; }
+		public Order Order { get; set; }
 		public virtual IEnumerable<InvoiceDetail> InvoiceDetails { get; set; }
 		public InvoiceCoupon? InvoiceCoupon { get; set; }
 		public InvoicePayment? InvoicePayment { get; set; }
