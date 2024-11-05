@@ -117,8 +117,8 @@ namespace ApplicationLayer.Services {
 			try {
 				var categoryFromDb = await _unitOfWork.Category.GetAsync(x => x.Id == request.Id);
 
-				if (categoryFromDb != null) {
-					return new ApiResponse<CategoryResponseDto>(false, $"Category with Id: {request.Id} already exits");
+				if (categoryFromDb == null) {
+					return new ApiResponse<CategoryResponseDto>(false, $"Category with Id: {request.Id} not found");
 				}
 
 				var categoryEntity = _mapper.Map<Category>(request);
