@@ -1,7 +1,9 @@
 ﻿using ApplicationLayer.DTOs.Requests.Category;
+using ApplicationLayer.DTOs.Requests.Coupon;
 using ApplicationLayer.DTOs.Requests.Menu;
 using ApplicationLayer.DTOs.Requests.Table;
 using ApplicationLayer.DTOs.Responses.Category;
+using ApplicationLayer.DTOs.Responses.Coupon;
 using ApplicationLayer.DTOs.Responses.Menu;
 using ApplicationLayer.DTOs.Responses.Table;
 using AutoMapper;
@@ -16,6 +18,7 @@ namespace ApplicationLayer.MappingConfigs {
 				config.CreateMap<Category, CategoryResponseDto>();
 				config.CreateMap<Menu, MenuResponse>();
 				config.CreateMap<Table, TableResponse>();
+				config.CreateMap<Coupon, CouponResponse>();
 
 				#endregion
 
@@ -27,6 +30,8 @@ namespace ApplicationLayer.MappingConfigs {
 				config.CreateMap<UpdateMenuRequest, Menu>();
 				config.CreateMap<CreateTableRequest, Table>();
 				config.CreateMap<UpdateTableRequest, Table>();
+				config.CreateMap<CreateCouponRequest, Coupon>();
+				config.CreateMap<UpdateCouponRequest, Coupon>();
 
 				#endregion
 			});

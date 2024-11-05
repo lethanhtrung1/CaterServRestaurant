@@ -22,12 +22,6 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<CategoryResponseDto>> CreateAsync(CreateCategoryRequest request) {
 			try {
-				var categoryFromDb = await _unitOfWork.Category.GetAsync(x => x.Code == request.Code);
-
-				if (categoryFromDb != null) {
-					return new ApiResponse<CategoryResponseDto>(false, $"Category with code: {request.Code} already exits");
-				}
-
 				var categoryEntity = _mapper.Map<Category>(request);
 
 				if (categoryEntity == null) {

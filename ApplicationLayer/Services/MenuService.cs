@@ -23,12 +23,6 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<MenuResponse>> CreateAsync(CreateMenuRequest request) {
 			try {
-				var menuFromDb = await _unitOfWork.Menu.GetAsync(x => x.MenuName == request.MenuName);
-
-				if (menuFromDb != null) {
-					return new ApiResponse<MenuResponse>(false, "Menu already exist");
-				}
-
 				var menuToDb = _mapper.Map<Menu>(request);
 
 				// Hanle upload image

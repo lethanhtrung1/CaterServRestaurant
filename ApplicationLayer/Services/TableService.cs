@@ -22,12 +22,6 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<TableResponse>> CreateAsync(CreateTableRequest request) {
 			try {
-				var checkTableExist = await _unitOfWork.Table.GetAsync(x => x.Name == request.Name);
-
-				if (checkTableExist == null) {
-					return new ApiResponse<TableResponse>(false, "Table already exist");
-				}
-
 				var table = _mapper.Map<Table>(request);
 
 				if (table == null) {
