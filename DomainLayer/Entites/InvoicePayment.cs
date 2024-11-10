@@ -1,7 +1,7 @@
 ﻿namespace DomainLayer.Entites {
 	public class InvoicePayment : BaseEntity {
 		public decimal Amount { get; set; }
-		public Guid CustomerId { get; set; }
+		public string CustomerId { get; set; }
 		public string CustomerName { get; set; }
 		/// <summary>
 		/// 1 Tiền mặt, 2 Thẻ ATM

@@ -18,6 +18,9 @@ namespace ApplicationLayer.DependencyInjection {
 			services.AddScoped<IMenuService, MenuService>();
 			services.AddScoped<ITableService, TableService>();
 			services.AddScoped<ICouponService, CouponService>();
+			services.AddScoped<IProductService, ProductService>();
+			services.AddScoped<IProductImageService, ProductImageService>();
+			services.AddScoped<IMealService, MealService>();
 
 			return services;
 		}

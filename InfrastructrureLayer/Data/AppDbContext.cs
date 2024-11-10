@@ -143,6 +143,18 @@ namespace InfrastructrureLayer.Data {
 				entity.HasOne(d => d.Invoice)
 					.WithOne(p => p.InvoicePayment)
 					.HasForeignKey<InvoicePayment>(d => d.InvoiceId)
+					.OnDelete(DeleteBehavior.NoAction);
+
+				entity.HasOne(d => d.Customer)
+					.WithMany(p => p.InvoicePayments)
+					.HasForeignKey(d => d.CustomerId)
+					.OnDelete(DeleteBehavior.NoAction);
+			});
+
+			modelBuilder.Entity<Meal>(entity => {
+				entity.HasOne(d => d.Customer)
+					.WithMany(p => p.Meals)
+					.HasForeignKey(d => d.CustomerId)
 					.OnDelete(DeleteBehavior.Cascade);
 			});
 

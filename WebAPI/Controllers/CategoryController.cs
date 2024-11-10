@@ -14,11 +14,11 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpGet("{id:Guid}")]
-		public async Task<IActionResult> GetById(Guid categoryId) {
-			if (categoryId == Guid.Empty) {
+		public async Task<IActionResult> GetById(Guid id) {
+			if (id == Guid.Empty) {
 				return BadRequest("Invalid request");
 			}
-			var result = await _categoryService.GetByIdAsync(categoryId);
+			var result = await _categoryService.GetByIdAsync(id);
 			if (result == null || !result.Success) {
 				return BadRequest(result!.Message);
 			}
@@ -26,11 +26,11 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpGet("{code}")]
-		public async Task<IActionResult> GetByCode(string categoryCode) {
-			if (categoryCode == string.Empty) {
+		public async Task<IActionResult> GetByCode(string code) {
+			if (code == string.Empty) {
 				return BadRequest("Invalid request");
 			}
-			var result = await _categoryService.GetByCodeAsync(categoryCode);
+			var result = await _categoryService.GetByCodeAsync(code);
 			if (result == null || !result.Success) {
 				return BadRequest(result!.Message);
 			}

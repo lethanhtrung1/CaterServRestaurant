@@ -19,8 +19,8 @@
 		/// <summary>
 		/// Tiền khách đặt trước
 		/// </summary>
-		public double DepositAmount { get; set; }
-		public double TotalAmount { get; set; }
+		public decimal DepositAmount { get; set; }
+		public decimal TotalAmount { get; set; }
 
 		public ApplicationUser Customer { get; set; }
 		public virtual IEnumerable<OrderDetail> Details { get; set; }

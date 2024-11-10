@@ -5,8 +5,8 @@
 		public Guid OrderId { get; set; }
 		public string UnitName {  get; set; }
 		public int Quantity { get; set; }
-		public double Price { get; set; }
-		public double TotalPrice { get; set; }
+		public decimal Price { get; set; }
+		public decimal TotalPrice { get; set; }
 
 		public Order Order { get; set; }
 		public Product Product { get; set; }
