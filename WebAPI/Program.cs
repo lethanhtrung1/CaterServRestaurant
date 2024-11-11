@@ -1,4 +1,5 @@
 using ApplicationLayer.DependencyInjection;
+using InfrastructrureLayer.Data;
 using InfrastructrureLayer.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using WebAPI.Extensions;
@@ -49,6 +50,15 @@ app.UseAuthentication();
 
 app.UseAuthorization();
 
+SeedDatabase();
+
 app.MapControllers();
 
 app.Run();
+
+void SeedDatabase() {
+	using (var scope = app.Services.CreateScope()) {
+		var dbInitializer = scope.ServiceProvider.GetRequiredService<IDbInitializer>();
+		dbInitializer.Initialize();
+	}
+}

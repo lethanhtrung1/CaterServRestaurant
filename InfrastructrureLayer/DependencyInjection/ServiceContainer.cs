@@ -59,6 +59,7 @@ namespace InfrastructrureLayer.DependencyInjection {
 			services.AddScoped<IAuthService, AuthService>();
 			services.AddScoped<ITokenService, TokenService>();
 			services.AddScoped<IUnitOfWork, UnitOfWork>();
+			services.AddScoped<IDbInitializer, DbInitializer>();
 
 			return services;
 		}

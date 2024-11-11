@@ -58,6 +58,10 @@ namespace ApplicationLayer.Services {
 			if (meal == null) {
 				return false;
 			}
+			var mealProducts = await _unitOfWork.MealProduct.GetListAsync(x => x.MealId == id);
+			foreach (var mealProduct in mealProducts) {
+				await _unitOfWork.MealProduct.RemoveAsync(mealProduct);
+			}
 			await _unitOfWork.Meal.RemoveAsync(meal);
 			await _unitOfWork.SaveChangeAsync();
 			return true;

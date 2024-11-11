@@ -57,13 +57,21 @@ namespace InfrastructrureLayer.Authentication {
 			var token = jwtTokenHandler.CreateToken(tokenDescriptor);
 
 			if (populateExp) { // Genrate new RefreshToken
+				// Revoke old token
+				var oldTokens = await _unitOfWork.RefreshToken
+					.GetListAsync(x => x.UserId == user.Id && x.RevokedDate == null && DateTime.UtcNow <= x.ExpiryDate);
+				foreach (var item in oldTokens) {
+					item.RevokedDate = DateTime.UtcNow;
+					await _unitOfWork.RefreshToken.UpdateAsync(item);
+				}
+
 				var newRefreshToken = GenerateRefreshToken();
 				var newRefreshTokenToDb = new RefreshToken() {
 					UserId = user.Id,
 					JwtId = token.Id,
 					Token = newRefreshToken,
 					AddedDate = DateTime.UtcNow,
-					ExpiryDate = DateTime.UtcNow.AddDays(10),
+					ExpiryDate = DateTime.UtcNow.AddDays(7),
 				};
 				await _unitOfWork.RefreshToken.AddAsync(newRefreshTokenToDb);
 				await _unitOfWork.SaveChangeAsync();
@@ -71,7 +79,7 @@ namespace InfrastructrureLayer.Authentication {
 
 			var accessToken = jwtTokenHandler.WriteToken(token);
 			var refreshToken = await _unitOfWork.RefreshToken
-				.GetAsync(x => x.UserId == user.Id && x.IsActive);
+				.GetAsync(x => x.UserId == user.Id && x.RevokedDate == null && DateTime.UtcNow <= x.ExpiryDate);
 
 			return new TokenResponseDto(accessToken, refreshToken.Token);
 		}
@@ -90,7 +98,7 @@ namespace InfrastructrureLayer.Authentication {
 				var userId = principal.Claims.FirstOrDefault(x => x.Type == "Id")!.Value;
 
 				var refreshToken = await _unitOfWork.RefreshToken
-					.GetAsync(x => x.Token == token.RefreshToken && x.IsActive);
+					.GetAsync(x => x.Token == token.RefreshToken && x.RevokedDate == null && DateTime.UtcNow <= x.ExpiryDate);
 
 				if (refreshToken is null) {
 					throw new SecurityTokenException("Invalid Token");

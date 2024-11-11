@@ -57,7 +57,9 @@ namespace InfrastructrureLayer.Authentication {
 
 				return new AuthResponseDto() {
 					Success = true,
-					Message = "Refresh Token successfully"
+					Message = "Refresh Token successfully",
+					AccessToken = token.AccessToken,
+					RefreshToken = token.RefreshToken,
 				};
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
