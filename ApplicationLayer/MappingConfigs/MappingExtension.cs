@@ -1,9 +1,11 @@
-﻿using ApplicationLayer.DTOs.Requests.Category;
+﻿using ApplicationLayer.DTOs.Requests.Booking;
+using ApplicationLayer.DTOs.Requests.Category;
 using ApplicationLayer.DTOs.Requests.Coupon;
 using ApplicationLayer.DTOs.Requests.Meal;
 using ApplicationLayer.DTOs.Requests.Menu;
 using ApplicationLayer.DTOs.Requests.Product;
 using ApplicationLayer.DTOs.Requests.Table;
+using ApplicationLayer.DTOs.Responses.Booking;
 using ApplicationLayer.DTOs.Responses.Category;
 using ApplicationLayer.DTOs.Responses.Coupon;
 using ApplicationLayer.DTOs.Responses.Meal;
@@ -23,6 +25,7 @@ namespace ApplicationLayer.MappingConfigs {
 				config.CreateMap<Menu, MenuResponse>();
 				config.CreateMap<Table, TableResponse>();
 				config.CreateMap<Coupon, CouponResponse>();
+				config.CreateMap<Booking, BookingResponse>();
 
 				config.CreateMap<Product, ProductResponse>();
 				config.CreateMap<Menu, ProductMenuDto>();
@@ -46,6 +49,8 @@ namespace ApplicationLayer.MappingConfigs {
 				config.CreateMap<UpdateTableRequest, Table>();
 				config.CreateMap<CreateCouponRequest, Coupon>();
 				config.CreateMap<UpdateCouponRequest, Coupon>();
+				config.CreateMap<CreateBookingRequest, Booking>();
+				config.CreateMap<UpdateBookingRequest, Booking>();
 
 				config.CreateMap<CreateProductRequest, Product>();
 				config.CreateMap<UpdateProductRequest, Product>();
