@@ -28,8 +28,30 @@ namespace ApplicationLayer.MappingConfigs {
 				config.CreateMap<Booking, BookingResponse>();
 
 				config.CreateMap<Product, ProductResponse>();
-				config.CreateMap<Menu, ProductMenuDto>();
-				config.CreateMap<Category, ProductMenuDto>();
+				config.CreateMap<Menu, ProductMenuDto>()
+					.ForMember(
+						dest => dest.Id,
+						opt => opt.MapFrom(src => src.Id))
+					.ForMember(
+						dest => dest.MenuName,
+						opt => opt.MapFrom(src => src.MenuName))
+					.ForMember(
+						dest => dest.Description,
+						opt => opt.MapFrom(src => src.Description));
+
+				config.CreateMap<Category, ProductCategoryDto>()
+					.ForMember(
+						dest => dest.Id,
+						opt => opt.MapFrom(src => src.Id))
+					.ForMember(
+						dest => dest.Code,
+						opt => opt.MapFrom(src => src.Code))
+					.ForMember(
+						dest => dest.Name,
+						opt => opt.MapFrom(src => src.Name))
+					.ForMember(
+						dest => dest.Description,
+						opt => opt.MapFrom(src => src.Description));
 				config.CreateMap<ProductImage, ProductImageDto>();
 				config.CreateMap<ProductImage, ProductImageResponse>();
 

@@ -49,8 +49,8 @@ namespace ApplicationLayer.Services {
 				await _unitOfWork.Product.AddAsync(productToDb);
 				await _unitOfWork.SaveChangeAsync();
 
-				var menu = _unitOfWork.Menu.GetAsync(x => x.Id == productToDb.MenuId);
-				var category = _unitOfWork.Category.GetAsync(x => x.Id == productToDb.CategoryId);
+				var menu = await _unitOfWork.Menu.GetAsync(x => x.Id == productToDb.MenuId);
+				var category = await _unitOfWork.Category.GetAsync(x => x.Id == productToDb.CategoryId);
 
 				var productMenu = _mapper.Map<ProductMenuDto>(menu);
 				var productCategory = _mapper.Map<ProductCategoryDto>(category);
