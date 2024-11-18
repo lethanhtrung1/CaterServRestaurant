@@ -23,10 +23,10 @@ namespace InfrastructrureLayer.Data {
 		public virtual DbSet<Meal> Meals { get; set; }
 		public virtual DbSet<MealProduct> MealsProducts { get; set; }
 		public virtual DbSet<ApplicationUser> ApplicationUsers { get; set; }
-		//public virtual DbSet<Payment> Payments { get; set; }
-		//public virtual DbSet<PaymentDestination> PaymentDestinations { get; set; }
-		//public virtual DbSet<PaymentSignature> PaymentSignatures { get; set; }
-		//public virtual DbSet<Merchant> Merchants { get; set; }
+		public virtual DbSet<Payment> Payments { get; set; }
+		public virtual DbSet<PaymentDestination> PaymentDestinations { get; set; }
+		public virtual DbSet<PaymentSignature> PaymentSignatures { get; set; }
+		public virtual DbSet<Merchant> Merchants { get; set; }
 		//public virtual DbSet<UserCoupon> UserCoupons { get; set; }
 
 		#endregion
@@ -141,6 +141,26 @@ namespace InfrastructrureLayer.Data {
 					.WithOne(p => p.UserProfile)
 					.HasForeignKey<UserProfile>(d => d.UserId)
 					.OnDelete(DeleteBehavior.Cascade);
+			});
+
+			modelBuilder.Entity<Payment>(entity => {
+				entity.HasOne(d => d.Order)
+					.WithOne(p => p.Payment)
+					.HasForeignKey<Payment>(d => d.OrderId);
+
+				entity.HasOne(d => d.PaymentDestination)
+					.WithMany(p => p.Payments)
+					.HasForeignKey(d => d.PaymentDestinationId);
+
+				entity.HasOne(d => d.Merchant)
+					.WithMany(p => p.Payments)
+					.HasForeignKey(d => d.MerchantId);
+			});
+
+			modelBuilder.Entity<PaymentSignature>(entity => {
+				entity.HasOne(d => d.Payment)
+					.WithMany(p => p.PaymentSignature)
+					.HasForeignKey(d => d.PaymentId);
 			});
 		}
 	}

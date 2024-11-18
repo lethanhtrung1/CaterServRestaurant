@@ -25,6 +25,7 @@
 
 		public ApplicationUser? Customer { get; set; }
 		public virtual IEnumerable<OrderDetail> OrderDetails { get; set; }
-		public Booking? Booking { get; set; }
+		public virtual Booking? Booking { get; set; }
+		public virtual Payment? Payment { get; set; }
 	}
 }

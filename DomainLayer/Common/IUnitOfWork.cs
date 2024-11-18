@@ -17,5 +17,9 @@ namespace DomainLayer.Common {
 		ITableRepository Table { get; }
 		IUserProfileRepository UserProfile { get; }
 		IRefreshTokenRepository RefreshToken { get; }
+		IMerchantRepository Merchant { get; }
+		IPaymentRepository Payment { get; }
+		IPaymentDestinationRepository PaymentsDestination { get; }
+		IPaymentSignatureRepository PaymentSignature { get; }
 	}
 }

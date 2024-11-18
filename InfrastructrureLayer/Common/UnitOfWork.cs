@@ -20,6 +20,10 @@ namespace InfrastructrureLayer.Common {
 		public ITableRepository Table { get; set; }
 		public IUserProfileRepository UserProfile { get; set; }
 		public IRefreshTokenRepository RefreshToken {  get; set; }
+		public IMerchantRepository Merchant {  get; set; }
+		public IPaymentRepository Payment { get; set; }
+		public IPaymentDestinationRepository PaymentsDestination { get; set; }
+		public IPaymentSignatureRepository PaymentSignature { get; set; }
 
 		public UnitOfWork(AppDbContext dbContext) {
 			_dbContext = dbContext;
@@ -37,6 +41,10 @@ namespace InfrastructrureLayer.Common {
 			Table = new TableRepository(_dbContext);
 			UserProfile = new UserProfileRepository(_dbContext);
 			RefreshToken = new RefreshTokenRepository(_dbContext);
+			Merchant = new MerchantRepository(_dbContext);
+			Payment = new PaymentRepository(_dbContext);
+			PaymentsDestination = new PaymentDestinationRepository(_dbContext);
+			PaymentSignature = new PaymentSignatureRepository(_dbContext);
 		}
 
 		public async Task SaveChangeAsync() {

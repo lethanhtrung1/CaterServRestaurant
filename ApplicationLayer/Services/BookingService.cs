@@ -10,9 +10,8 @@ using DomainLayer.Common;
 using DomainLayer.Entites;
 using Microsoft.AspNetCore.Identity;
 
-namespace ApplicationLayer.Services
-{
-    public class BookingService : IBookingService {
+namespace ApplicationLayer.Services {
+	public class BookingService : IBookingService {
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly ILogException _logger;
 		private readonly IMapper _mapper;
@@ -36,6 +35,14 @@ namespace ApplicationLayer.Services
 					bookingToDb.CustomerId = customerId;
 				}
 				await _unitOfWork.Booking.AddAsync(bookingToDb);
+				foreach (var item in request.TableIds) {
+					var bookingTable = new BookingTable {
+						Id = Guid.NewGuid(),
+						TableId = item,
+						BookingId = bookingToDb.Id
+					};
+					await _unitOfWork.BookingTable.AddAsync(bookingTable);
+				}
 				await _unitOfWork.SaveChangeAsync();
 
 				var result = _mapper.Map<BookingResponse>(bookingToDb);
@@ -54,6 +61,14 @@ namespace ApplicationLayer.Services
 					bookingToDb.CustomerId = customer?.Id;
 				}
 				await _unitOfWork.Booking.AddAsync(bookingToDb);
+				foreach (var item in request.TableIds) {
+					var bookingTable = new BookingTable {
+						Id = Guid.NewGuid(),
+						TableId = item,
+						BookingId = bookingToDb.Id
+					};
+					await _unitOfWork.BookingTable.AddAsync(bookingTable);
+				}
 				await _unitOfWork.SaveChangeAsync();
 
 				var result = _mapper.Map<BookingResponse>(bookingToDb);
