@@ -37,7 +37,7 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpPost]
-		public async Task<IActionResult> Add([FromForm] CreateBookingRequest request) {
+		public async Task<IActionResult> Add([FromBody] CreateBookingRequest request) {
 			if (request is null) {
 				return BadRequest("Invalid client request");
 			}

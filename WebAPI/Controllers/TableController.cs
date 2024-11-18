@@ -25,7 +25,7 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpGet("get-all")]
-		public async Task<IActionResult> GetAllPaging(PagingRequest request) {
+		public async Task<IActionResult> GetAllPaging([FromQuery] PagingRequest request) {
 			if (request == null) {
 				return BadRequest("Invalid client request");
 			}
@@ -37,7 +37,7 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpGet("filter")]
-		public async Task<IActionResult> Filter(FilterTableRequest request) {
+		public async Task<IActionResult> Filter([FromQuery] FilterTableRequest request) {
 			if (request == null) {
 				return BadRequest("Invalid client request");
 			}
