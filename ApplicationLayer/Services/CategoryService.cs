@@ -121,16 +121,15 @@ namespace ApplicationLayer.Services {
 					return new ApiResponse<CategoryResponseDto>(false, $"Category with Id: {request.Id} not found");
 				}
 
-				var categoryEntity = _mapper.Map<Category>(request);
+				categoryFromDb.Code = request.Code!;
+				categoryFromDb.Name = request.Name!;
+				categoryFromDb.Description = request.Description!;
+				categoryFromDb.Inactive = request.Inactive;
 
-				if (categoryEntity == null) {
-					return new ApiResponse<CategoryResponseDto>(false, "Internal server error occurred");
-				}
-
-				await _unitOfWork.Category.UpdateAsync(categoryEntity);
+				await _unitOfWork.Category.UpdateAsync(categoryFromDb);
 				await _unitOfWork.SaveChangeAsync();
 
-				var result = _mapper.Map<CategoryResponseDto>(categoryEntity);
+				var result = _mapper.Map<CategoryResponseDto>(categoryFromDb);
 				return new ApiResponse<CategoryResponseDto>(result, true, "Updated successfully");
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);

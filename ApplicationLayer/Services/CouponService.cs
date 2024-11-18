@@ -162,12 +162,19 @@ namespace ApplicationLayer.Services {
 					return new ApiResponse<CouponResponse>(false, $"Coupon with id: {request.Id} not found");
 				}
 
-				var couponToDb = _mapper.Map<Coupon>(request);
+				if (!string.IsNullOrEmpty(request.CouponCode) && checkCouponFromDb.CouponCode != request.CouponCode) {
+					checkCouponFromDb.CouponCode = request.CouponCode;
+				}
 
-				await _unitOfWork.Coupon.UpdateAsync(couponToDb);
+				checkCouponFromDb.DiscountPercent = request.DiscountPercent;
+				checkCouponFromDb.DiscountAmount = request.DiscountAmount;
+				checkCouponFromDb.Quantity = request.Quantity;
+				checkCouponFromDb.Inactive = request.Inactive;
+
+				await _unitOfWork.Coupon.UpdateAsync(checkCouponFromDb);
 				await _unitOfWork.SaveChangeAsync();
 
-				var response = _mapper.Map<CouponResponse>(couponToDb);
+				var response = _mapper.Map<CouponResponse>(checkCouponFromDb);
 				return new ApiResponse<CouponResponse>(response, true, "Updated successfully");
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);

@@ -136,38 +136,39 @@ namespace ApplicationLayer.Services {
 					return new ApiResponse<MenuResponse>(false, $"Menu with Id: {request.Id} not exist");
 				}
 
-				var menuToDb = _mapper.Map<Menu>(request);
+				menuFromDb.MenuName = request.MenuName!;
+				menuFromDb.Description = request.Description!;
+				menuFromDb.Inactive = request.Inactive;
+				menuFromDb.SortOrder = request.SortOrder;
 
-				if (menuToDb is not null) {
-					// Handle remove image
-					if (menuToDb.ImageUrl != null) {
-						string imagePath = Path.Combine(Directory.GetCurrentDirectory(), menuToDb.ImageUrl);
-						if (File.Exists(imagePath)) {
-							File.Delete(imagePath);
-						}
+				// Handle remove image
+				if (menuFromDb.ImageUrl != null) {
+					string imagePath = Path.Combine(Directory.GetCurrentDirectory(), menuFromDb.ImageUrl);
+					if (File.Exists(imagePath)) {
+						File.Delete(imagePath);
 					}
-
-					// Hanle upload image
-					var file = request.File;
-					var folderName = Path.Combine("Resources", "Images");
-					var pathToSave = Path.Combine(Directory.GetCurrentDirectory(), folderName);
-					if (file is not null) {
-						var fileName = ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName!.Trim('"'); // Content-Disposition
-						var fullPath = Path.Combine(pathToSave, fileName);
-						var dbPath = Path.Combine(folderName, fileName);
-						using (var stream = new FileStream(fullPath, FileMode.Create)) {
-							file.CopyTo(stream);
-						}
-
-						menuToDb.ImageUrl = dbPath;
-					}
-
-					// save to db
-					await _unitOfWork.Menu.AddAsync(menuToDb);
-					await _unitOfWork.SaveChangeAsync();
 				}
 
-				var result = _mapper.Map<MenuResponse>(menuToDb);
+				// Hanle upload image
+				var file = request.File;
+				var folderName = Path.Combine("Resources", "Images");
+				var pathToSave = Path.Combine(Directory.GetCurrentDirectory(), folderName);
+				if (file is not null) {
+					var fileName = ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName!.Trim('"'); // Content-Disposition
+					var fullPath = Path.Combine(pathToSave, fileName);
+					var dbPath = Path.Combine(folderName, fileName);
+					using (var stream = new FileStream(fullPath, FileMode.Create)) {
+						file.CopyTo(stream);
+					}
+
+					menuFromDb.ImageUrl = dbPath;
+				}
+
+				// save to db
+				await _unitOfWork.Menu.UpdateAsync(menuFromDb);
+				await _unitOfWork.SaveChangeAsync();
+
+				var result = _mapper.Map<MenuResponse>(menuFromDb);
 				if (result.ImageUrl != null) {
 					result.ImageUrl = Path.Combine(Directory.GetCurrentDirectory(), result.ImageUrl);
 				}

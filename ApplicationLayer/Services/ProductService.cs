@@ -229,8 +229,8 @@ namespace ApplicationLayer.Services {
 					}
 				}
 
-				var productToDb = _mapper.Map<Product>(request);
-				if (productToDb == null) {
+				_mapper.Map(request, checkProductFromDb);
+				if (checkProductFromDb == null) {
 					return new ApiResponse<ProductResponse>(false, "Internal server error occurred");
 				}
 
@@ -247,20 +247,20 @@ namespace ApplicationLayer.Services {
 							file.CopyTo(stream);
 						}
 
-						productToDb.Thumbnail = dbPath;
+						checkProductFromDb.Thumbnail = dbPath;
 					}
 				}
 
-				await _unitOfWork.Product.UpdateAsync(productToDb);
+				await _unitOfWork.Product.UpdateAsync(checkProductFromDb);
 				await _unitOfWork.SaveChangeAsync();
 
-				var menu = _unitOfWork.Menu.GetAsync(x => x.Id == productToDb.MenuId);
-				var category = _unitOfWork.Category.GetAsync(x => x.Id == productToDb.CategoryId);
+				var menu = _unitOfWork.Menu.GetAsync(x => x.Id == checkProductFromDb.MenuId);
+				var category = _unitOfWork.Category.GetAsync(x => x.Id == checkProductFromDb.CategoryId);
 
 				var productMenu = _mapper.Map<ProductMenuDto>(menu);
 				var productCategory = _mapper.Map<ProductCategoryDto>(category);
 
-				var response = _mapper.Map<ProductResponse>(productToDb);
+				var response = _mapper.Map<ProductResponse>(checkProductFromDb);
 				response.MenuDto = productMenu;
 				response.CategoryDto = productCategory;
 

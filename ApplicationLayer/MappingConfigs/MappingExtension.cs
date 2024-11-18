@@ -2,6 +2,8 @@
 using ApplicationLayer.DTOs.Requests.Category;
 using ApplicationLayer.DTOs.Requests.Coupon;
 using ApplicationLayer.DTOs.Requests.Menu;
+using ApplicationLayer.DTOs.Requests.Merchant;
+using ApplicationLayer.DTOs.Requests.PaymetDestination;
 using ApplicationLayer.DTOs.Requests.Product;
 using ApplicationLayer.DTOs.Requests.Table;
 using ApplicationLayer.DTOs.Responses.Booking;
@@ -9,7 +11,9 @@ using ApplicationLayer.DTOs.Responses.Category;
 using ApplicationLayer.DTOs.Responses.Coupon;
 using ApplicationLayer.DTOs.Responses.Meal;
 using ApplicationLayer.DTOs.Responses.Menu;
+using ApplicationLayer.DTOs.Responses.Merchant;
 using ApplicationLayer.DTOs.Responses.Order;
+using ApplicationLayer.DTOs.Responses.PaymentDestination;
 using ApplicationLayer.DTOs.Responses.Product;
 using ApplicationLayer.DTOs.Responses.Table;
 using AutoMapper;
@@ -40,6 +44,9 @@ namespace ApplicationLayer.MappingConfigs {
 				config.CreateMap<Order, OrderResponse>();
 				config.CreateMap<OrderDetail, OrderDetailResponse>();
 
+				config.CreateMap<Merchant, MerchantResponse>();
+				config.CreateMap<PaymentDestination, PaymentDestinationResponse>();
+
 				#endregion
 
 				#region RequestDto to Domain
@@ -58,7 +65,10 @@ namespace ApplicationLayer.MappingConfigs {
 				config.CreateMap<CreateProductRequest, Product>();
 				config.CreateMap<UpdateProductRequest, Product>();
 				//config.CreateMap<CreateProductImageRequest, ProductImage>();
-
+				config.CreateMap<CreateMerchantRequest, Merchant>();
+				config.CreateMap<UpdateMerchantRequest, Merchant>();
+				config.CreateMap<CreatePaymentDestinationRequest, PaymentDestination>();
+				config.CreateMap<UpdatePaymentDestinationRequest, PaymentDestination>();
 				#endregion
 			});
 

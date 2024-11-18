@@ -157,16 +157,16 @@ namespace ApplicationLayer.Services {
 					return new ApiResponse<TableResponse>(false, "Table already exist");
 				}
 
-				var table = _mapper.Map<Table>(request);
+				_mapper.Map(request, checkTableExist);
 
-				if (table == null) {
+				if (checkTableExist == null) {
 					return new ApiResponse<TableResponse>(false, "Internal server error occurred");
 				}
 
-				await _unitOfWork.Table.UpdateAsync(table);
+				await _unitOfWork.Table.UpdateAsync(checkTableExist);
 				await _unitOfWork.SaveChangeAsync();
 
-				var result = _mapper.Map<TableResponse>(table);
+				var result = _mapper.Map<TableResponse>(checkTableExist);
 
 				return new ApiResponse<TableResponse>(result, true, "Updated successfully");
 			} catch (Exception ex) {
