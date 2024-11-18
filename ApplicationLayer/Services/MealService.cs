@@ -1,4 +1,5 @@
-﻿using ApplicationLayer.DTOs.Requests.Meal;
+﻿using ApplicationLayer.Common.Consumer;
+using ApplicationLayer.DTOs.Requests.Meal;
 using ApplicationLayer.DTOs.Responses;
 using ApplicationLayer.DTOs.Responses.Meal;
 using ApplicationLayer.Interfaces;
@@ -6,24 +7,23 @@ using AutoMapper;
 using DomainLayer.Common;
 using DomainLayer.Entites;
 using DomainLayer.Exceptions;
-using Microsoft.AspNetCore.Http;
-using System.Security.Claims;
 
-namespace ApplicationLayer.Services {
-	public class MealService : IMealService {
+namespace ApplicationLayer.Services
+{
+    public class MealService : IMealService {
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly IMapper _mapper;
-		private readonly IHttpContextAccessor _httpContextAccessor;
+		private readonly ICurrentUserService _currentUserService;
 
-		public MealService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor httpContextAccessor) {
+		public MealService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentUserService currentUserService) {
 			_unitOfWork = unitOfWork;
 			_mapper = mapper;
-			_httpContextAccessor = httpContextAccessor;
+			_currentUserService = currentUserService;
 		}
 
 		public async Task<ApiResponse<MealResponse>> CreateMeal(CreateMealRequest request) {
 			try {
-				var customerId = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
+				var customerId = _currentUserService.UserId;
 
 				if (string.IsNullOrEmpty(customerId)) {
 					throw new CustomDomainException("Invalid Customer");
@@ -31,7 +31,7 @@ namespace ApplicationLayer.Services {
 
 				var meal = new Meal {
 					Id = Guid.NewGuid(),
-					CustomerId = customerId!,
+					CustomerId = customerId,
 					TableId = request.TableId,
 					TotalPrice = 0,
 					CreatedDate = DateTime.UtcNow,

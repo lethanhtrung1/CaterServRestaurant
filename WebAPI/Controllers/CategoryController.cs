@@ -1,6 +1,8 @@
-﻿using ApplicationLayer.DTOs.Pagination;
+﻿using ApplicationLayer.Common.Constants;
+using ApplicationLayer.DTOs.Pagination;
 using ApplicationLayer.DTOs.Requests.Category;
 using ApplicationLayer.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebAPI.Controllers {
@@ -50,6 +52,7 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpPost]
+		[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
 		public async Task<IActionResult> Add([FromBody] CreateCategoryRequest request) {
 			if (request == null) {
 				return BadRequest("Invalid request");
@@ -62,6 +65,7 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpPut]
+		[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
 		public async Task<IActionResult> Update([FromBody] UpdateCategoryRequest request) {
 			if (request == null) {
 				return BadRequest("Invalid request");
@@ -74,6 +78,7 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpDelete("{id:Guid}")]
+		[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
 		public async Task<IActionResult> Delete(Guid categoryId) {
 			if (categoryId == Guid.Empty) {
 				return BadRequest("Invalid request");

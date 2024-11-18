@@ -8,6 +8,5 @@ namespace DomainLayer.Entites {
 		public UserProfile UserProfile { get; set; }
 		public virtual IEnumerable<Meal> Meals { get; set; }
 		public virtual IEnumerable<Order>? Orders { get; set; }
-		public virtual IEnumerable<InvoicePayment>? InvoicePayments { get; set; }
 	}
 }

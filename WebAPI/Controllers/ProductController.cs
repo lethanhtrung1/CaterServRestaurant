@@ -1,6 +1,8 @@
-﻿using ApplicationLayer.DTOs.Pagination;
+﻿using ApplicationLayer.Common.Constants;
+using ApplicationLayer.DTOs.Pagination;
 using ApplicationLayer.DTOs.Requests.Product;
 using ApplicationLayer.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebAPI.Controllers {
@@ -41,6 +43,7 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpPost]
+		[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
 		public async Task<IActionResult> Add([FromForm] CreateProductRequest request) {
 			var result = await _service.CreateAsync(request);
 			if (!result.Success) {
@@ -50,6 +53,7 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpPut]
+		[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
 		public async Task<IActionResult> Update([FromForm] UpdateProductRequest request) {
 			var result = await _service.UpdateAsync(request);
 			if (!result.Success) {
@@ -59,6 +63,7 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpDelete("{id:Guid}")]
+		[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
 		public async Task<IActionResult> Delete(Guid id) {
 			var result = await _service.DeleteAsync(id);
 			return Ok(result);

@@ -1,6 +1,8 @@
-﻿using ApplicationLayer.DTOs.Pagination;
+﻿using ApplicationLayer.Common.Constants;
+using ApplicationLayer.DTOs.Pagination;
 using ApplicationLayer.DTOs.Requests.Menu;
 using ApplicationLayer.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebAPI.Controllers {
@@ -35,6 +37,7 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpPost]
+		[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
 		public async Task<IActionResult> Add([FromForm] CreateMenuRequest request) {
 			if (request is null) {
 				return BadRequest("Invalid client request");
@@ -47,6 +50,7 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpPut]
+		[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
 		public async Task<IActionResult> Update([FromForm] UpdateMenuRequest request) {
 			if (request is null) {
 				return BadRequest("Invalid client request");
@@ -59,6 +63,7 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpDelete("id:{Guid}")]
+		[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
 		public async Task<IActionResult> Delete(Guid id) {
 			var result = await _service.DeleteAsync(id);
 			if (!result) {

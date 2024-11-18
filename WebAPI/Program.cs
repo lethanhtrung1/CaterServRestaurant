@@ -16,6 +16,8 @@ builder.Services.AddApplicationService();
 builder.Services.AddInfrastructureService(builder.Configuration);
 builder.Services.AddServiceExtensions(builder.Configuration);
 
+builder.Services.AddHttpContextAccessor();
+
 builder.Services.AddCors(options => {
 	options.AddPolicy(
 		name: "allowSpecificOrigins",

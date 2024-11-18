@@ -25,7 +25,6 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpGet("get-all")]
-		[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
 		public async Task<IActionResult> GetAllPaging(PagingRequest request) {
 			if (request == null) {
 				return BadRequest("Invalid client request");

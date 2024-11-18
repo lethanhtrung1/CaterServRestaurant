@@ -5,13 +5,8 @@ namespace DomainLayer.Common {
 		Task SaveChangeAsync();
 		IBookingRepository Booking {  get; }
 		IBookingTableRepository BookingTable { get; }
-		//IBranchRepository Branch { get; }
 		ICategoryRepository Category { get; }
 		ICouponRepository Coupon { get; }
-		IInvoiceRepository Invoice { get; }
-		IInvoiceCouponRepository InvoiceCoupon { get; }
-		IInvoiceDetailRepository InvoiceDetail { get; }
-		IInvoicePaymentRepository InvoicePayment { get; }
 		IMealRepository Meal { get; }
 		IMealProductRepository MealProduct { get; }
 		IMenuRepository Menu { get; }

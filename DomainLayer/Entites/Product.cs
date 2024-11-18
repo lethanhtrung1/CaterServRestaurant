@@ -14,7 +14,6 @@
 		public Category Category { get; set; }
 		public Menu Menu { get; set; }
 		public virtual IEnumerable<OrderDetail>? OrderDetails { get; set; }
-		public virtual IEnumerable<InvoiceDetail>? InvoiceDetails { get; set; }
 		public virtual IEnumerable<ProductImage>? ProductImages { get; set; }
 		public virtual IEnumerable<MealProduct>? MealProducts { get; set; }
 	}

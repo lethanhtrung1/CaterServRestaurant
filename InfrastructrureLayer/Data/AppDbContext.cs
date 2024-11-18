@@ -11,23 +11,23 @@ namespace InfrastructrureLayer.Data {
 		public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
 		public virtual DbSet<Booking> Bookings { get; set; }
 		public virtual DbSet<BookingTable> BookingsTables { get; set; }
-		//public virtual DbSet<Branch> Branches { get; set; }
 		public virtual DbSet<Category> Categories { get; set; }
 		public virtual DbSet<Coupon> Coupons { get; set; }
-		public virtual DbSet<Invoice> Invoices { get; set; }
-		public virtual DbSet<InvoiceCoupon> InvoiceCoupons { get; set; }
-		public virtual DbSet<InvoiceDetail> InvoiceDetails { get; set; }
-		public virtual DbSet<InvoicePayment> InvoicePayments { get; set; }
 		public virtual DbSet<Menu> Menus { get; set; }
 		public virtual DbSet<Order> Orders { get; set; }
 		public virtual DbSet<OrderDetail> OrderDetails { get; set; }
 		public virtual DbSet<Product> Products { get; set; }
 		public virtual DbSet<ProductImage> ProductImages { get; set; }
-		//public virtual DbSet<Restaurant> Restaurants { get; set; }
 		public virtual DbSet<Table> Tables { get; set; }
 		public virtual DbSet<UserProfile> UserProfiles { get; set; }
 		public virtual DbSet<Meal> Meals { get; set; }
 		public virtual DbSet<MealProduct> MealsProducts { get; set; }
+		public virtual DbSet<ApplicationUser> ApplicationUsers { get; set; }
+		//public virtual DbSet<Payment> Payments { get; set; }
+		//public virtual DbSet<PaymentDestination> PaymentDestinations { get; set; }
+		//public virtual DbSet<PaymentSignature> PaymentSignatures { get; set; }
+		//public virtual DbSet<Merchant> Merchants { get; set; }
+		//public virtual DbSet<UserCoupon> UserCoupons { get; set; }
 
 		#endregion
 
@@ -57,6 +57,11 @@ namespace InfrastructrureLayer.Data {
 				entity.HasMany(p => p.BookingTables)
 					.WithOne(d => d.Booking)
 					.OnDelete(DeleteBehavior.Cascade);
+
+				entity.HasOne(p => p.Customer)
+					.WithMany(d => d.Bookings)
+					.HasForeignKey(p => p.CustomerId)
+					.IsRequired(false);
 			});
 
 			modelBuilder.Entity<Table>(entity => {
@@ -95,60 +100,23 @@ namespace InfrastructrureLayer.Data {
 			});
 
 			modelBuilder.Entity<Order>(entity => {
-				entity.HasOne(d => d.Invoice)
-					.WithOne(p => p.Order);
+				entity.HasOne(d => d.Booking)
+					.WithMany(p => p.Orders)
+					.HasForeignKey(d => d.BookingId)
+					.IsRequired(false)
+					.OnDelete(DeleteBehavior.NoAction);
 
 				entity.HasOne(d => d.Customer)
 					.WithMany(p => p.Orders)
-					.HasForeignKey(d => d.CustomerId);
+					.HasForeignKey(d => d.CustomerId)
+					.IsRequired(false);
 			});
 
 			modelBuilder.Entity<OrderDetail>(entity => {
 				entity.HasOne(d => d.Order)
-					.WithMany(p => p.Details)
+					.WithMany(p => p.OrderDetails)
 					.HasForeignKey(d => d.OrderId)
 					.OnDelete(DeleteBehavior.Cascade);
-			});
-
-			modelBuilder.Entity<Invoice>(entity => {
-				entity.HasOne(d => d.Order)
-					.WithOne(p => p.Invoice)
-					.HasForeignKey<Invoice>(d => d.OrderId);
-
-				entity.HasMany(d => d.InvoiceDetails)
-					.WithOne(p => p.Invoice);
-
-				entity.HasOne(d => d.InvoiceCoupon)
-					.WithOne(p => p.Invoice);
-
-				entity.HasOne(d => d.InvoicePayment)
-					.WithOne(p => p.Invoice);
-			});
-
-			modelBuilder.Entity<InvoiceDetail>(entity => {
-				entity.HasOne(d => d.Invoice)
-					.WithMany(p => p.InvoiceDetails)
-					.HasForeignKey(d => d.InvoiceId)
-					.OnDelete(DeleteBehavior.Cascade);
-			});
-
-			modelBuilder.Entity<InvoiceCoupon>(entity => {
-				entity.HasOne(d => d.Invoice)
-					.WithOne(p => p.InvoiceCoupon)
-					.HasForeignKey<InvoiceCoupon>(d => d.InvoiceId)
-					.OnDelete(DeleteBehavior.Cascade);
-			});
-
-			modelBuilder.Entity<InvoicePayment>(entity => {
-				entity.HasOne(d => d.Invoice)
-					.WithOne(p => p.InvoicePayment)
-					.HasForeignKey<InvoicePayment>(d => d.InvoiceId)
-					.OnDelete(DeleteBehavior.NoAction);
-
-				entity.HasOne(d => d.Customer)
-					.WithMany(p => p.InvoicePayments)
-					.HasForeignKey(d => d.CustomerId)
-					.OnDelete(DeleteBehavior.NoAction);
 			});
 
 			modelBuilder.Entity<Meal>(entity => {
@@ -171,7 +139,8 @@ namespace InfrastructrureLayer.Data {
 			modelBuilder.Entity<UserProfile>(entity => {
 				entity.HasOne(d => d.User)
 					.WithOne(p => p.UserProfile)
-					.HasForeignKey<UserProfile>(d => d.UserId);
+					.HasForeignKey<UserProfile>(d => d.UserId)
+					.OnDelete(DeleteBehavior.Cascade);
 			});
 		}
 	}

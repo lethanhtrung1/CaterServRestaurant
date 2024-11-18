@@ -54,7 +54,15 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<PagedList<TableResponse>>> FilterAsync(FilterTableRequest request) {
 			try {
-				var tables = await _unitOfWork.Table.GetListAsync(x => x.IsAvailable == request.IsAvailable && x.MaxCapacity == request.MaxCapacity);
+				var tables = await _unitOfWork.Table.GetListAsync();
+
+				if (request.IsAvailable) {
+					tables = tables.Where(x => x.IsAvailable).ToList();
+				}
+
+				if (request.MaxCapacity > 0) {
+					tables = tables.Where(x => x.MaxCapacity == request.MaxCapacity).ToList();
+				}
 
 				if (!string.IsNullOrEmpty(request.AreaName)) {
 					tables = tables.Where(x => x.AreaName == request.AreaName).ToList();

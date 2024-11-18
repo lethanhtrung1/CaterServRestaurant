@@ -1,11 +1,13 @@
-﻿using ApplicationLayer.Interfaces;
+﻿using ApplicationLayer.Common.Consumer;
+using ApplicationLayer.Interfaces;
 using ApplicationLayer.MappingConfigs;
 using ApplicationLayer.Services;
 using AutoMapper;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace ApplicationLayer.DependencyInjection {
-	public static class ServiceContainer {
+namespace ApplicationLayer.DependencyInjection
+{
+    public static class ServiceContainer {
 		public static IServiceCollection AddApplicationService(this IServiceCollection services) {
 
 			// Register automapper
@@ -14,6 +16,7 @@ namespace ApplicationLayer.DependencyInjection {
 			services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 			// DI
+			services.AddScoped<ICurrentUserService, CurrentUserService>();
 			services.AddScoped<ICategoryService, CategoryService>();
 			services.AddScoped<IMenuService, MenuService>();
 			services.AddScoped<ITableService, TableService>();
@@ -22,6 +25,8 @@ namespace ApplicationLayer.DependencyInjection {
 			services.AddScoped<IProductImageService, ProductImageService>();
 			services.AddScoped<IMealService, MealService>();
 			services.AddScoped<IBookingService, BookingService>();
+			services.AddScoped<IOrderService, OrderService>();
+			services.AddScoped<IOrderDetailService, OrderDetailService>();
 
 			return services;
 		}
