@@ -79,11 +79,11 @@ namespace WebAPI.Controllers {
 
 		[HttpDelete("{id:Guid}")]
 		[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
-		public async Task<IActionResult> Delete(Guid categoryId) {
-			if (categoryId == Guid.Empty) {
+		public async Task<IActionResult> Delete(Guid id) {
+			if (id == Guid.Empty) {
 				return BadRequest("Invalid request");
 			}
-			var result = await _categoryService.DeleteAsync(categoryId);
+			var result = await _categoryService.DeleteAsync(id);
 			if (!result) {
 				return BadRequest("Internal server error occurred");
 			}
