@@ -7,27 +7,22 @@ using AutoMapper;
 using DomainLayer.Common;
 using DomainLayer.Entites;
 using DomainLayer.Exceptions;
-using Microsoft.AspNetCore.Identity;
 
 namespace ApplicationLayer.Services {
 	public class MealService : IMealService {
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly IMapper _mapper;
 		private readonly ICurrentUserService _currentUserService;
-		private readonly UserManager<ApplicationUser> _userManager;
 
-		public MealService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentUserService currentUserService, UserManager<ApplicationUser> userManager) {
+		public MealService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentUserService currentUserService) {
 			_unitOfWork = unitOfWork;
 			_mapper = mapper;
 			_currentUserService = currentUserService;
-			_userManager = userManager;
 		}
 
 		public async Task<ApiResponse<MealResponse>> AddProductToMeal(CreateMealRequest request) {
 			try {
-				var customerName = _currentUserService.UserId;
-				var customer = await _userManager.FindByEmailAsync(customerName!);
-				var customerId = customer!.Id;
+				var customerId = _currentUserService.UserId;
 				if (string.IsNullOrEmpty(customerId)) {
 					throw new CustomDomainException("Invalid Customer");
 				}
@@ -115,6 +110,7 @@ namespace ApplicationLayer.Services {
 				if (meal == null) {
 					return new ApiResponse<MealResponse>(false, "Meal not found");
 				}
+				decimal totalAmount = 0;
 
 				if (meal.MealProducts.Count() == 0) {
 					foreach (var item in request.Products) {
@@ -126,6 +122,7 @@ namespace ApplicationLayer.Services {
 						};
 						var product = await _unitOfWork.Product.GetAsync(x => x.Id == item.ProductId);
 						mealProduct.Price = mealProduct.Quantity * product.Price;
+						totalAmount += mealProduct.Price;
 						await _unitOfWork.MealProduct.AddAsync(mealProduct);
 					}
 				} else {
@@ -136,6 +133,7 @@ namespace ApplicationLayer.Services {
 						if (mealProductFromDb != null) {
 							mealProductFromDb.Quantity += item.Quantity;
 							mealProductFromDb.Price = mealProductFromDb.Quantity * mealProductFromDb.Price;
+							totalAmount += mealProductFromDb.Price;
 							await _unitOfWork.MealProduct.UpdateAsync(mealProductFromDb);
 						}
 						// add new MealProduct
@@ -148,13 +146,13 @@ namespace ApplicationLayer.Services {
 							};
 							var product = await _unitOfWork.Product.GetAsync(x => x.Id == item.ProductId);
 							mealProduct.Price = mealProduct.Quantity * product.Price;
-
+							totalAmount += mealProduct.Price;
 							await _unitOfWork.MealProduct.AddAsync(mealProduct);
 						}
 					}
 				}
-
-
+				meal.TotalPrice = totalAmount;
+				await _unitOfWork.Meal.UpdateAsync(meal);
 				await _unitOfWork.SaveChangeAsync();
 
 				// Response

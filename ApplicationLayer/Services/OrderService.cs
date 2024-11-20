@@ -9,7 +9,6 @@ using ApplicationLayer.Logging;
 using AutoMapper;
 using DomainLayer.Common;
 using DomainLayer.Entites;
-using Microsoft.AspNetCore.Identity;
 
 namespace ApplicationLayer.Services {
 	public class OrderService : IOrderService {
@@ -17,22 +16,19 @@ namespace ApplicationLayer.Services {
 		private readonly ICurrentUserService _currentUserService;
 		private readonly IMapper _mapper;
 		private readonly ILogException _logger;
-		private readonly UserManager<ApplicationUser> _userManager;
 
-		public OrderService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentUserService currentUserService, ILogException logger,
-			UserManager<ApplicationUser> userManager) {
+		public OrderService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentUserService currentUserService, ILogException logger) {
 			_currentUserService = currentUserService;
 			_unitOfWork = unitOfWork;
 			_mapper = mapper;
 			_logger = logger;
-			_userManager = userManager;
 		}
 
 		public async Task<ApiResponse<OrderResponse>> CreateOrder(CreateOrderRequest request) {
 			try {
-				var customerName = _currentUserService.UserId;
-				var customer = await _userManager.FindByEmailAsync(customerName!);
-				var customerId = customer!.Id;
+				var customerId = _currentUserService.UserId;
+				//var customer = await _userManager.FindByEmailAsync(customerName!);
+				//var customerId = customer!.Id;
 				var meal = await _unitOfWork.Meal.GetAsync(x => x.Id == request.MealId);
 				if (meal == null) return new ApiResponse<OrderResponse>(false, "Meal not found");
 

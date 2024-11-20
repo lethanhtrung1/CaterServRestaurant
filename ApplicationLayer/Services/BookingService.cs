@@ -30,9 +30,7 @@ namespace ApplicationLayer.Services {
 		public async Task<ApiResponse<BookingResponse>> CreateAsync(CreateBookingRequest request) {
 			try {
 				var bookingToDb = _mapper.Map<Booking>(request);
-				var customerName = _currentUserService.UserId;
-				var customer = await _userManager.FindByEmailAsync(customerName!);
-				var customerId = customer!.Id;
+				var customerId = _currentUserService.UserId;
 				if (!string.IsNullOrEmpty(customerId)) {
 					bookingToDb.CustomerId = customerId;
 				}
