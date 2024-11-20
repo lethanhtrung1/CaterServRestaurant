@@ -92,7 +92,7 @@ namespace ApplicationLayer.Services {
 		public async Task<ApiResponse<PagedList<ProductResponse>>> FilterAsync(FilterProductRequest request) {
 			try {
 				var products = await _unitOfWork.Product
-					.GetListAsync(x => x.Inactive == request.InActive, includeProperties: "Menus,Categories");
+					.GetListAsync(x => x.Inactive == request.InActive, includeProperties: "Menu,Category");
 
 				if (!string.IsNullOrEmpty(request.SearchText)) {
 					products = products.Where(x => request.SearchText.Contains(x.Name)).ToList();
@@ -178,7 +178,7 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<PagedList<ProductResponse>>> GetListAsync(PagingRequest request) {
 			try {
-				var products = await _unitOfWork.Product.GetListAsync(includeProperties: "Menus,Categories");
+				var products = await _unitOfWork.Product.GetListAsync(includeProperties: "Menu,Category");
 				var productsPagedList = products.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize);
 
 				if (!productsPagedList.Any()) {

@@ -13,7 +13,7 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpGet("{id:Guid}")]
-		public async Task<IActionResult> GetById([FromQuery] Guid id) {
+		public async Task<IActionResult> GetById(Guid id) {
 			var result = await _service.GetById(id);
 			if (!result.Success) {
 				return BadRequest(result);
@@ -42,6 +42,15 @@ namespace WebAPI.Controllers {
 		[HttpPut]
 		public async Task<IActionResult> Update([FromBody] UpdatePaymentDestinationRequest request) {
 			var result = await _service.Update(request);
+			if (!result.Success) {
+				return BadRequest(result);
+			}
+			return Ok(result);
+		}
+
+		[HttpPut("status")]
+		public async Task<IActionResult> UpdateStatus([FromBody] SetActivePaymentDestinationRequest request) {
+			var result = await _service.SetActive(request);
 			if (!result.Success) {
 				return BadRequest(result);
 			}
