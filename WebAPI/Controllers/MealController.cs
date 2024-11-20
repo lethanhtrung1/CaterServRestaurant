@@ -36,6 +36,15 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpPost]
+		public async Task<IActionResult> AddMeal(CreateMealRequest request) {
+			var result = await _service.AddProductToMeal(request);
+			if (result == null || !result.Success) {
+				return BadRequest(result);
+			}
+			return Ok(result);
+		}
+
+		[HttpPost("meal-product")]
 		public async Task<IActionResult> AddMealProduct(CreateMealProductRequest request) {
 			var result = await _service.AddMealProduct(request);
 			if (result == null || !result.Success) {

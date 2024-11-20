@@ -4,7 +4,7 @@ using ApplicationLayer.DTOs.Responses.Meal;
 
 namespace ApplicationLayer.Interfaces {
 	public interface IMealService {
-		Task<ApiResponse<MealResponse>> CreateMeal(CreateMealRequest request);
+		Task<ApiResponse<MealResponse>> AddProductToMeal(CreateMealRequest request);
 		Task<bool> DeleteMeal(Guid id);
 		Task<ApiResponse<MealResponse>> GetMeal(Guid id);
 		Task<ApiResponse<MealResponse>> IncreaseMealProduct(UpdateMealProductRequest request);

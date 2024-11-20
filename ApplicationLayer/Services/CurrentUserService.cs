@@ -1,15 +1,9 @@
 ﻿using ApplicationLayer.Common.Consumer;
 using Microsoft.AspNetCore.Http;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Claims;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace ApplicationLayer.Services
-{
-    public class CurrentUserService : ICurrentUserService {
+namespace ApplicationLayer.Services {
+	public class CurrentUserService : ICurrentUserService {
 		private readonly IHttpContextAccessor _httpContextAccessor;
 
 		public CurrentUserService(IHttpContextAccessor httpContextAccessor) {

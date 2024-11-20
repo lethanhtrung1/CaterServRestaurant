@@ -7,24 +7,27 @@ using AutoMapper;
 using DomainLayer.Common;
 using DomainLayer.Entites;
 using DomainLayer.Exceptions;
+using Microsoft.AspNetCore.Identity;
 
-namespace ApplicationLayer.Services
-{
-    public class MealService : IMealService {
+namespace ApplicationLayer.Services {
+	public class MealService : IMealService {
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly IMapper _mapper;
 		private readonly ICurrentUserService _currentUserService;
+		private readonly UserManager<ApplicationUser> _userManager;
 
-		public MealService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentUserService currentUserService) {
+		public MealService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentUserService currentUserService, UserManager<ApplicationUser> userManager) {
 			_unitOfWork = unitOfWork;
 			_mapper = mapper;
 			_currentUserService = currentUserService;
+			_userManager = userManager;
 		}
 
-		public async Task<ApiResponse<MealResponse>> CreateMeal(CreateMealRequest request) {
+		public async Task<ApiResponse<MealResponse>> AddProductToMeal(CreateMealRequest request) {
 			try {
-				var customerId = _currentUserService.UserId;
-
+				var customerName = _currentUserService.UserId;
+				var customer = await _userManager.FindByEmailAsync(customerName!);
+				var customerId = customer!.Id;
 				if (string.IsNullOrEmpty(customerId)) {
 					throw new CustomDomainException("Invalid Customer");
 				}
@@ -44,7 +47,7 @@ namespace ApplicationLayer.Services
 
 				var response = _mapper.Map<MealResponse>(meal);
 				response.TableId = table.Id;
-				response.TableName = table.Name;
+				response.TableName = meal.Table.Name;
 
 				return new ApiResponse<MealResponse>(response, true, "Created successfully");
 			} catch (Exception ex) {
@@ -108,33 +111,50 @@ namespace ApplicationLayer.Services
 
 		public async Task<ApiResponse<MealResponse>> AddMealProduct(CreateMealProductRequest request) {
 			try {
-				var meal = await _unitOfWork.Meal.GetAsync(x => x.Id == request.MealId, includeProperties: "Table");
+				var meal = await _unitOfWork.Meal.GetAsync(x => x.Id == request.MealId, includeProperties: "Table,MealProducts");
 				if (meal == null) {
 					return new ApiResponse<MealResponse>(false, "Meal not found");
 				}
 
-				foreach (var productId in request.ProductIds) {
-					// Check product has been added to the meal -> update quantity
-					var mealProductFromDb = await _unitOfWork.MealProduct.GetAsync(x => x.MealId == request.MealId && x.ProductId == productId);
-					if (mealProductFromDb != null) {
-						mealProductFromDb.Quantity += request.Quantity;
-						mealProductFromDb.Price = mealProductFromDb.Quantity * mealProductFromDb.Product.Price;
-						await _unitOfWork.MealProduct.UpdateAsync(mealProductFromDb);
-					}
-					// add new MealProduct
-					else {
+				if (meal.MealProducts.Count() == 0) {
+					foreach (var item in request.Products) {
 						var mealProduct = new MealProduct {
 							Id = Guid.NewGuid(),
 							MealId = request.MealId,
-							ProductId = productId,
-							Quantity = request.Quantity,
+							ProductId = item.ProductId,
+							Quantity = item.Quantity,
 						};
-						var product = await _unitOfWork.Product.GetAsync(x => x.Id == productId);
+						var product = await _unitOfWork.Product.GetAsync(x => x.Id == item.ProductId);
 						mealProduct.Price = mealProduct.Quantity * product.Price;
-
 						await _unitOfWork.MealProduct.AddAsync(mealProduct);
 					}
+				} else {
+					foreach (var item in request.Products) {
+						var checkMealProduct = await _unitOfWork.MealProduct.GetAsync(x => x.MealId == request.MealId);
+						// Check product has been added to the meal -> update quantity
+						var mealProductFromDb = await _unitOfWork.MealProduct.GetAsync(x => x.MealId == request.MealId && x.ProductId == item.ProductId);
+						if (mealProductFromDb != null) {
+							mealProductFromDb.Quantity += item.Quantity;
+							mealProductFromDb.Price = mealProductFromDb.Quantity * mealProductFromDb.Price;
+							await _unitOfWork.MealProduct.UpdateAsync(mealProductFromDb);
+						}
+						// add new MealProduct
+						else {
+							var mealProduct = new MealProduct {
+								Id = Guid.NewGuid(),
+								MealId = request.MealId,
+								ProductId = item.ProductId,
+								Quantity = item.Quantity,
+							};
+							var product = await _unitOfWork.Product.GetAsync(x => x.Id == item.ProductId);
+							mealProduct.Price = mealProduct.Quantity * product.Price;
+
+							await _unitOfWork.MealProduct.AddAsync(mealProduct);
+						}
+					}
 				}
+
+
 				await _unitOfWork.SaveChangeAsync();
 
 				// Response
