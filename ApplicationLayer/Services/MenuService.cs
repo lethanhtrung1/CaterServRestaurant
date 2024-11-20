@@ -7,6 +7,7 @@ using ApplicationLayer.Logging;
 using AutoMapper;
 using DomainLayer.Common;
 using DomainLayer.Entites;
+using Microsoft.AspNetCore.Http;
 using System.Net.Http.Headers;
 
 namespace ApplicationLayer.Services {
@@ -14,11 +15,13 @@ namespace ApplicationLayer.Services {
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly ILogException _logger;
 		private readonly IMapper _mapper;
+		private readonly IHttpContextAccessor _httpContextAccessor;
 
-		public MenuService(IUnitOfWork unitOfWork, ILogException logger, IMapper mapper) {
+		public MenuService(IUnitOfWork unitOfWork, ILogException logger, IMapper mapper, IHttpContextAccessor httpContextAccessor) {
 			_unitOfWork = unitOfWork;
 			_logger = logger;
 			_mapper = mapper;
+			_httpContextAccessor = httpContextAccessor;
 		}
 
 		public async Task<ApiResponse<MenuResponse>> CreateAsync(CreateMenuRequest request) {
@@ -32,7 +35,7 @@ namespace ApplicationLayer.Services {
 				if (file is not null) {
 					var fileName = ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName!.Trim('"'); // Content-Disposition
 					var fullPath = Path.Combine(pathToSave, fileName);
-					var dbPath = Path.Combine(folderName, fileName);
+					var dbPath = Path.Combine(folderName, fileName).Replace("\\", "/");
 					using (var stream = new FileStream(fullPath, FileMode.Create)) {
 						file.CopyTo(stream);
 					}
@@ -44,8 +47,9 @@ namespace ApplicationLayer.Services {
 				await _unitOfWork.SaveChangeAsync();
 
 				var result = _mapper.Map<MenuResponse>(menuToDb);
+				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
 				if (result.ImageUrl != null) {
-					result.ImageUrl = Path.Combine(Directory.GetCurrentDirectory(), result.ImageUrl);
+					result.ImageUrl = $"{baseUrl}/{result.ImageUrl}";
 				}
 
 				return new ApiResponse<MenuResponse>(result, true, "");
@@ -90,8 +94,9 @@ namespace ApplicationLayer.Services {
 				}
 
 				var result = _mapper.Map<MenuResponse>(menu);
-				if (result.ImageUrl is not null) {
-					result.ImageUrl = Path.Combine(Directory.GetCurrentDirectory(), result.ImageUrl);
+				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
+				if (result.ImageUrl != null) {
+					result.ImageUrl = $"{baseUrl}/{result.ImageUrl}";
 				}
 
 				return new ApiResponse<MenuResponse>(result, true, "");
@@ -112,19 +117,42 @@ namespace ApplicationLayer.Services {
 
 				int totalRecord = menus.Count();
 				var result = _mapper.Map<List<MenuResponse>>(menuPagedList);
+				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
 				foreach (var item in result) {
-					if (item.ImageUrl is not null) {
-						item.ImageUrl = Path.Combine(Directory.GetCurrentDirectory(), item.ImageUrl);
+					if (item.ImageUrl != null) {
+						item.ImageUrl = $"{baseUrl}/{item.ImageUrl}";
 					}
 				}
 
-				return new ApiResponse<PagedList<MenuResponse>>(
-					new PagedList<MenuResponse>(result, request.PageNumber, request.PageSize, totalRecord),
-					true, ""
-				);
+				return new ApiResponse<PagedList<MenuResponse>>
+					(new PagedList<MenuResponse>(result, request.PageNumber, request.PageSize, totalRecord), true, "");
+				
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
 				return new ApiResponse<PagedList<MenuResponse>>(false, $"Internal server error occurred: {ex.Message}");
+			}
+		}
+
+		public async Task<ApiResponse<List<MenuResponse>>> GetListActiveAsync() {
+			try {
+				var menus = await _unitOfWork.Menu.GetListAsync(x => x.Inactive);
+
+				if (menus is null || !menus.Any()) {
+					return new ApiResponse<List<MenuResponse>>(false, "No record available");
+				}
+
+				var result = _mapper.Map<List<MenuResponse>>(menus);
+				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
+				foreach (var item in result) {
+					if (item.ImageUrl != null) {
+						item.ImageUrl = $"{baseUrl}/{item.ImageUrl}";
+					}
+				}
+
+				return new ApiResponse<List<MenuResponse>>(result, true, "");
+			} catch (Exception ex) {
+				_logger.LogExceptions(ex);
+				return new ApiResponse<List<MenuResponse>>(false, $"Internal server error occurred: {ex.Message}");
 			}
 		}
 
@@ -156,7 +184,7 @@ namespace ApplicationLayer.Services {
 				if (file is not null) {
 					var fileName = ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName!.Trim('"'); // Content-Disposition
 					var fullPath = Path.Combine(pathToSave, fileName);
-					var dbPath = Path.Combine(folderName, fileName);
+					var dbPath = Path.Combine(folderName, fileName).Replace("\\", "/");
 					using (var stream = new FileStream(fullPath, FileMode.Create)) {
 						file.CopyTo(stream);
 					}
@@ -169,8 +197,9 @@ namespace ApplicationLayer.Services {
 				await _unitOfWork.SaveChangeAsync();
 
 				var result = _mapper.Map<MenuResponse>(menuFromDb);
+				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
 				if (result.ImageUrl != null) {
-					result.ImageUrl = Path.Combine(Directory.GetCurrentDirectory(), result.ImageUrl);
+					result.ImageUrl = $"{baseUrl}/{result.ImageUrl}";
 				}
 
 				return new ApiResponse<MenuResponse>(result, true, "");

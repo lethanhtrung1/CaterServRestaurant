@@ -113,6 +113,23 @@ namespace ApplicationLayer.Services {
 			}
 		}
 
+		public async Task<ApiResponse<List<CategoryResponseDto>>> GetListActiveAsync() {
+			try {
+				var categories = await _unitOfWork.Category.GetListAsync(x => x.Inactive);
+
+				if (categories is null || categories.Count() == 0) {
+					return new ApiResponse<List<CategoryResponseDto>>(false, "No record available");
+				}
+
+				var result = _mapper.Map<List<CategoryResponseDto>>(categories);
+
+				return new ApiResponse<List<CategoryResponseDto>>(result, true, "");
+			} catch (Exception ex) {
+				_logger.LogExceptions(ex);
+				return new ApiResponse<List<CategoryResponseDto>>(false, ex.Message);
+			}
+		}
+
 		public async Task<ApiResponse<CategoryResponseDto>> UpdateAsync(UpdateCategoryRequest request) {
 			try {
 				var categoryFromDb = await _unitOfWork.Category.GetAsync(x => x.Id == request.Id);

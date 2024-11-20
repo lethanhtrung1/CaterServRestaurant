@@ -51,6 +51,15 @@ namespace WebAPI.Controllers {
 			return Ok(result);
 		}
 
+		[HttpGet("active")]
+		public async Task<IActionResult> GetListActive() {
+			var result = await _categoryService.GetListActiveAsync();
+			if (result == null || !result.Success) {
+				return BadRequest(result!.Message);
+			}
+			return Ok(result);
+		}
+
 		[HttpPost]
 		[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
 		public async Task<IActionResult> Add([FromBody] CreateCategoryRequest request) {

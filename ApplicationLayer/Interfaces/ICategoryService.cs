@@ -8,6 +8,7 @@ namespace ApplicationLayer.Interfaces {
 		Task<ApiResponse<CategoryResponseDto>> GetByIdAsync(Guid id);
 		Task<ApiResponse<CategoryResponseDto>> GetByCodeAsync(string code);
 		Task<ApiResponse<PagedList<CategoryResponseDto>>> GetListAsync(PagingRequest request);
+		Task<ApiResponse<List<CategoryResponseDto>>> GetListActiveAsync();
 		Task<ApiResponse<CategoryResponseDto>> CreateAsync(CreateCategoryRequest request);
 		Task<ApiResponse<CategoryResponseDto>> UpdateAsync(UpdateCategoryRequest request);
 		Task<bool> DeleteAsync(Guid id);

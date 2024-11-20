@@ -39,7 +39,7 @@ namespace ApplicationLayer.Services {
 				foreach (var file in request.Files) {
 					var fileName = Guid.NewGuid().ToString() + ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName!.Trim('"'); // Content-Disposition
 					var fullPath = Path.Combine(pathToSave, fileName);
-					var dbPath = Path.Combine(folderName, fileName);
+					var dbPath = Path.Combine(folderName, fileName).Replace("\\", "/");
 
 					var productImage = new ProductImage {
 						Id = Guid.NewGuid(),

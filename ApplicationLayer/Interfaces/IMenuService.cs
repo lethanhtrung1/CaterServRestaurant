@@ -7,6 +7,7 @@ namespace ApplicationLayer.Interfaces {
 	public interface IMenuService {
 		Task<ApiResponse<MenuResponse>> GetAsync(Guid id);
 		Task<ApiResponse<PagedList<MenuResponse>>> GetListAsync(PagingRequest request);
+		Task<ApiResponse<List<MenuResponse>>> GetListActiveAsync();
 		Task<bool> DeleteAsync(Guid id);
 		Task<ApiResponse<MenuResponse>> CreateAsync(CreateMenuRequest request);
 		Task<ApiResponse<MenuResponse>> UpdateAsync(UpdateMenuRequest request);

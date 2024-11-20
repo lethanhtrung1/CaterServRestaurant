@@ -36,6 +36,15 @@ namespace WebAPI.Controllers {
 			return Ok(result);
 		}
 
+		[HttpGet("active")]
+		public async Task<IActionResult> GetListActive() {
+			var result = await _service.GetListActiveAsync();
+			if (!result.Success) {
+				return BadRequest(result);
+			}
+			return Ok(result);
+		}
+
 		[HttpPost]
 		[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
 		public async Task<IActionResult> Add([FromForm] CreateMenuRequest request) {

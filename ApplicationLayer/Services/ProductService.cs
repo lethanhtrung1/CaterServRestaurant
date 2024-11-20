@@ -7,6 +7,7 @@ using ApplicationLayer.Logging;
 using AutoMapper;
 using DomainLayer.Common;
 using DomainLayer.Entites;
+using Microsoft.AspNetCore.Http;
 using System.Net.Http.Headers;
 
 namespace ApplicationLayer.Services {
@@ -14,11 +15,13 @@ namespace ApplicationLayer.Services {
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly ILogException _logger;
 		private readonly IMapper _mapper;
+		private readonly IHttpContextAccessor _httpContextAccessor;
 
-		public ProductService(IUnitOfWork unitOfWork, ILogException logger, IMapper mapper) {
+		public ProductService(IUnitOfWork unitOfWork, ILogException logger, IMapper mapper, IHttpContextAccessor httpContextAccessor) {
 			_unitOfWork = unitOfWork;
 			_logger = logger;
 			_mapper = mapper;
+			_httpContextAccessor = httpContextAccessor;
 		}
 
 		public async Task<ApiResponse<ProductResponse>> CreateAsync(CreateProductRequest request) {
@@ -37,7 +40,7 @@ namespace ApplicationLayer.Services {
 					if (file is not null) {
 						var fileName = Guid.NewGuid().ToString() + ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName!.Trim('"'); // Content-Disposition
 						var fullPath = Path.Combine(pathToSave, fileName);
-						var dbPath = Path.Combine(folderName, fileName);
+						var dbPath = Path.Combine(folderName, fileName).Replace("\\", "/");
 						using (var stream = new FileStream(fullPath, FileMode.Create)) {
 							file.CopyTo(stream);
 						}
@@ -59,8 +62,9 @@ namespace ApplicationLayer.Services {
 				response.MenuDto = productMenu;
 				response.CategoryDto = productCategory;
 
+				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
 				if (!string.IsNullOrEmpty(response.Thumbnail)) {
-					response.Thumbnail = Path.Combine(Directory.GetCurrentDirectory(), response.Thumbnail);
+					response.Thumbnail = $"{baseUrl}/{response.Thumbnail}";
 				}
 
 				return new ApiResponse<ProductResponse>(response, true, "");
@@ -123,6 +127,7 @@ namespace ApplicationLayer.Services {
 				int totalRecord = products.Count();
 				var productResponseDto = new List<ProductResponse>();
 
+				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
 				foreach (var item in productsPagedList) {
 					var product = _mapper.Map<ProductResponse>(item);
 					var productMenuDto = _mapper.Map<ProductMenuDto>(item.Menu);
@@ -132,7 +137,7 @@ namespace ApplicationLayer.Services {
 					product.CategoryDto = productCategoryDto;
 
 					if (!string.IsNullOrEmpty(product.Thumbnail)) {
-						product.Thumbnail = Path.Combine(Directory.GetCurrentDirectory(), product.Thumbnail);
+						product.Thumbnail = $"{baseUrl}/{product.Thumbnail}";
 					}
 
 					productResponseDto.Add(product);
@@ -150,7 +155,7 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<ProductResponse>> GetByIdAsync(Guid id) {
 			try {
-				var product = await _unitOfWork.Product.GetAsync(x => x.Id == id, includeProperties: "ProductImages,Menus,Categories");
+				var product = await _unitOfWork.Product.GetAsync(x => x.Id == id, includeProperties: "ProductImages,Menu,Category");
 
 				if (product == null) {
 					return new ApiResponse<ProductResponse>(false, $"Product with id: {id} not found");
@@ -161,12 +166,21 @@ namespace ApplicationLayer.Services {
 				var productCategoryDto = _mapper.Map<ProductCategoryDto>(product.Category);
 				var productDto = _mapper.Map<ProductResponse>(product);
 
+				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
+				if (productImagesDto != null) {
+					foreach (var item in productImagesDto) {
+						if (!string.IsNullOrEmpty(item.ImageUrl)) {
+							item.ImageUrl = $"{baseUrl}/{item.ImageUrl}";
+						}
+					}
+				}
+
 				productDto.ProductImagesDto = productImagesDto;
 				productDto.CategoryDto = productCategoryDto;
 				productDto.MenuDto = productMenuDto;
 
 				if (!string.IsNullOrEmpty(productDto.Thumbnail)) {
-					productDto.Thumbnail = Path.Combine(Directory.GetCurrentDirectory(), productDto.Thumbnail);
+					productDto.Thumbnail = $"{baseUrl}/{productDto.Thumbnail}";
 				}
 
 				return new ApiResponse<ProductResponse>(productDto, true, "");
@@ -188,6 +202,7 @@ namespace ApplicationLayer.Services {
 				int totalRecord = products.Count();
 				var productResponseDto = new List<ProductResponse>();
 
+				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
 				foreach (var item in productsPagedList) {
 					var product = _mapper.Map<ProductResponse>(item);
 					var productMenuDto = _mapper.Map<ProductMenuDto>(item.Menu);
@@ -197,7 +212,7 @@ namespace ApplicationLayer.Services {
 					product.CategoryDto = productCategoryDto;
 
 					if (!string.IsNullOrEmpty(product.Thumbnail)) {
-						product.Thumbnail = Path.Combine(Directory.GetCurrentDirectory(), product.Thumbnail);
+						product.Thumbnail = $"{baseUrl}/{product.Thumbnail}";
 					}
 
 					productResponseDto.Add(product);
@@ -242,7 +257,7 @@ namespace ApplicationLayer.Services {
 					if (file is not null) {
 						var fileName = Guid.NewGuid().ToString() + ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName!.Trim('"'); // Content-Disposition
 						var fullPath = Path.Combine(pathToSave, fileName);
-						var dbPath = Path.Combine(folderName, fileName);
+						var dbPath = Path.Combine(folderName, fileName).Replace("\\", "/");
 						using (var stream = new FileStream(fullPath, FileMode.Create)) {
 							file.CopyTo(stream);
 						}
@@ -264,8 +279,9 @@ namespace ApplicationLayer.Services {
 				response.MenuDto = productMenu;
 				response.CategoryDto = productCategory;
 
+				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
 				if (!string.IsNullOrEmpty(response.Thumbnail)) {
-					response.Thumbnail = Path.Combine(Directory.GetCurrentDirectory(), response.Thumbnail);
+					response.Thumbnail = $"{baseUrl}/{response.Thumbnail}";
 				}
 
 				return new ApiResponse<ProductResponse>(response, true, "Updated successfully");
