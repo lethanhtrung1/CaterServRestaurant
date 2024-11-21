@@ -29,7 +29,7 @@ namespace InfrastructrureLayer.Common {
 
 		public async Task<T> GetAsync(Expression<Func<T, bool>> predicate) {
 			IQueryable<T> query = _dbSet.Where(predicate);
-			return await query.FirstAsync();
+			return await query.FirstOrDefaultAsync();
 		}
 
 		public async Task<T> GetAsync(Expression<Func<T, bool>> predicate, string? includeProperties = null, bool tracked = false) {
@@ -40,7 +40,7 @@ namespace InfrastructrureLayer.Common {
 					query = query.Include(property);
 				}
 			}
-			return await query.FirstAsync();
+			return await query.FirstOrDefaultAsync();
 		}
 
 		public async Task<IEnumerable<T>> GetListAsync(Expression<Func<T, bool>>? predicate = null, string? includeProperties = null) {

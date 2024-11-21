@@ -29,18 +29,17 @@ namespace ApplicationLayer.Services {
 				if (string.IsNullOrEmpty(customerId)) {
 					throw new CustomDomainException("Invalid Customer");
 				}
-
-				var checkMeal = await _unitOfWork.ApplicationUser.GetAsync(x => x.Id == customerId, includeProperties: "Meal");
+				await _unitOfWork.Meal.BeginTransactionAsync();
+				//var checkMeal = await _unitOfWork.ApplicationUser.GetAsync(x => x.Id == customerId, includeProperties: "Meal");
+				var checkMeal = await _unitOfWork.Meal.GetAsync(x => x.CustomerId == customerId);
 				var response = new MealResponse();
 				decimal totalAmount = 0;
 
 				// Create new meal
-				if (checkMeal.Meal == null) {
+				if (checkMeal == null) {
 					var newMeal = new Meal {
-						Id = Guid.NewGuid(),
-						CustomerId = customerId,
-						TotalPrice = 0,
-						CreatedDate = DateTime.UtcNow,
+						Id = Guid.NewGuid(), CustomerId = customerId,
+						TotalPrice = 0, CreatedDate = DateTime.UtcNow,
 					};
 
 					await _unitOfWork.Meal.AddAsync(newMeal);
@@ -63,24 +62,24 @@ namespace ApplicationLayer.Services {
 
 					// response
 					response = _mapper.Map<MealResponse>(newMeal);
-					//var mealProductDetailResponse = _mapper.Map<MealProductDetailDto>(product);
-					//var mealProductReponse = new MealProductResponse {
-					//	Id = mealProduct.Id,
-					//	ProductDetail = mealProductDetailResponse,
-					//	Quantity = mealProduct.Quantity,
-					//	Price = mealProduct.Price,
-					//};
-					//response.Products = _mapper.Map<List<MealProductResponse>>(mealProductReponse);
+					var mealProductDetailResponse = _mapper.Map<MealProductDetailDto>(product);
+					var mealProductReponse = new MealProductResponse {
+						Id = mealProduct.Id,
+						ProductDetail = mealProductDetailResponse,
+						Quantity = mealProduct.Quantity,
+						Price = mealProduct.Price,
+					};
+					response.Products = _mapper.Map<List<MealProductResponse>>(mealProductReponse);
 				}
+				// meal already exists -> only add new meal product
 				else {
-					var mealId = checkMeal.Meal.Id;
-					var checkMealProduct = await _unitOfWork.MealProduct.GetAsync(x => x.MealId == mealId && x.ProductId == request.ProductId);
+					var checkMealProduct = await _unitOfWork.MealProduct.GetAsync(x => x.MealId == checkMeal.Id && x.ProductId == request.ProductId);
 
 					// Add new MealProduct
 					if (checkMealProduct == null) {
 						var mealProduct = new MealProduct {
 							Id = Guid.NewGuid(),
-							MealId = mealId,
+							MealId = checkMeal.Id,
 							ProductId = request.ProductId,
 							Quantity = request.Quantity,
 						};
@@ -89,7 +88,7 @@ namespace ApplicationLayer.Services {
 						totalAmount += mealProduct.Price;
 						await _unitOfWork.MealProduct.AddAsync(mealProduct);
 					}
-					// Update MealProduct
+					// Meal product already exists in Meal -> Update quantity MealProduct
 					else {
 						checkMealProduct.Quantity += request.Quantity;
 						checkMealProduct.Price = checkMealProduct.Quantity * checkMealProduct.Price;
@@ -97,17 +96,44 @@ namespace ApplicationLayer.Services {
 						await _unitOfWork.MealProduct.UpdateAsync(checkMealProduct);
 					}
 
-					var meal = await _unitOfWork.Meal.GetAsync(x => x.Id == mealId);
+					// Update Meal.TotalPrice
+					var meal = await _unitOfWork.Meal.GetAsync(x => x.Id == checkMeal.Id);
 					meal.TotalPrice = totalAmount;
 					await _unitOfWork.Meal.UpdateAsync(meal);
 
+					// return response
 					response = _mapper.Map<MealResponse>(meal);
+					response.Products = new List<MealProductResponse>();
+
+					// Get List meal product
+					var listMealProduct = await _unitOfWork.MealProduct.GetListAsync(x => x.MealId == checkMeal.Id);
+
+					// Mapp response MealProduct
+					foreach (var item in listMealProduct) {
+						var productDetail = await _unitOfWork.Product.GetAsync(x => x.Id == item.ProductId);
+						item.Price = productDetail.Price * item.Quantity;
+						var productDto = _mapper.Map<MealProductDetailDto>(productDetail);
+
+						// if thumbnail is not null -> return full path
+						var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
+						if (!string.IsNullOrEmpty(productDto.Thumbnail)) {
+							productDto.Thumbnail = $"{baseUrl}/{productDto.Thumbnail}";
+						}
+
+						var mealProductDto = _mapper.Map<MealProductResponse>(item);
+						mealProductDto.ProductDetail = productDto;
+
+						response.Products.Add(mealProductDto);
+					}
+					response.TotalPrice = response.Products.Select(x => x.Price).Sum();
 				}
 
 				await _unitOfWork.SaveChangeAsync();
+				await _unitOfWork.Meal.EndTransactionAsync();
 
 				return new ApiResponse<MealResponse>(response, true, "Created successfully");
 			} catch (Exception ex) {
+				await _unitOfWork.Meal.RollBackTransactionAsync();
 				return new ApiResponse<MealResponse>(false, $"{ex.Message}");
 			}
 		}

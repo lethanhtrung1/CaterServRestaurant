@@ -27,8 +27,6 @@ namespace ApplicationLayer.Services {
 		public async Task<ApiResponse<OrderResponse>> CreateOrder(CreateOrderRequest request) {
 			try {
 				var customerId = _currentUserService.UserId;
-				//var customer = await _userManager.FindByEmailAsync(customerName!);
-				//var customerId = customer!.Id;
 				var meal = await _unitOfWork.Meal.GetAsync(x => x.Id == request.MealId);
 				if (meal == null) return new ApiResponse<OrderResponse>(false, "Meal not found");
 
@@ -36,6 +34,8 @@ namespace ApplicationLayer.Services {
 				if (mealProducts == null || !mealProducts.Any()) {
 					return new ApiResponse<OrderResponse>(false, "Meal is empty");
 				}
+
+				await _unitOfWork.Order.BeginTransactionAsync();
 
 				// Dine in
 				if (request.OrderType == 1) {
@@ -59,9 +59,12 @@ namespace ApplicationLayer.Services {
 							TotalAmount = meal.TotalPrice,
 						};
 						await _unitOfWork.Order.AddAsync(newOrder);
+
 						var response = _mapper.Map<OrderResponse>(newOrder);
+						response.OrderTypeName = OrderType.DineIn;
 						response.OrderDetails = new List<OrderDetailResponse>();
 
+						// Create new OrderDetails
 						foreach (var item in mealProducts) {
 							var orderDetai = new OrderDetail {
 								Id = Guid.NewGuid(),
@@ -77,10 +80,11 @@ namespace ApplicationLayer.Services {
 
 							response.OrderDetails.Add(_mapper.Map<OrderDetailResponse>(orderDetai));
 						}
+						// Remove Meal & MealProduct
 						await _unitOfWork.MealProduct.RemoveRangeAsync(mealProducts);
 						await _unitOfWork.Meal.RemoveAsync(meal);
 						await _unitOfWork.SaveChangeAsync();
-
+						await _unitOfWork.Order.EndTransactionAsync();
 						return new ApiResponse<OrderResponse>(response, true, "Create order successfully");
 					}
 					// Update order
@@ -103,6 +107,7 @@ namespace ApplicationLayer.Services {
 
 							response.OrderDetails.Add(_mapper.Map<OrderDetailResponse>(orderDetai));
 						}
+						// Remove Meal & MealProduct
 						await _unitOfWork.MealProduct.RemoveRangeAsync(mealProducts);
 						await _unitOfWork.Meal.RemoveAsync(meal);
 						await _unitOfWork.SaveChangeAsync();
@@ -126,6 +131,7 @@ namespace ApplicationLayer.Services {
 					};
 					await _unitOfWork.Order.AddAsync(newOrder);
 					var response = _mapper.Map<OrderResponse>(newOrder);
+					response.OrderTypeName = OrderType.TakeAway;
 					response.OrderDetails = new List<OrderDetailResponse>();
 
 					foreach (var item in mealProducts) {
@@ -146,10 +152,11 @@ namespace ApplicationLayer.Services {
 					await _unitOfWork.MealProduct.RemoveRangeAsync(mealProducts);
 					await _unitOfWork.Meal.RemoveAsync(meal);
 					await _unitOfWork.SaveChangeAsync();
-
+					await _unitOfWork.Order.EndTransactionAsync();
 					return new ApiResponse<OrderResponse>(response, true, "Create order successfully");
 				}
 			} catch (Exception ex) {
+				await _unitOfWork.Order.RollBackTransactionAsync();
 				_logger.LogExceptions(ex);
 				return new ApiResponse<OrderResponse>(false, $"Internal server error occurred: {ex.Message}");
 			}
