@@ -11,6 +11,7 @@ namespace ApplicationLayer.Interfaces {
 		Task<ApiResponse<PagedList<TableResponse>>> GetTableAvailableAsync(PagingRequest request);
 		Task<ApiResponse<TableResponse>> CreateAsync(CreateTableRequest request);
 		Task<ApiResponse<TableResponse>> UpdateAsync(UpdateTableRequest request);
+		Task<ApiResponse<TableResponse>> UpdateStatusAsync(UpdateTableStatus request);
 		Task<bool> DeleteAsync(Guid id);
 	}
 }

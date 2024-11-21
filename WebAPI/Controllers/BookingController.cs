@@ -108,5 +108,14 @@ namespace WebAPI.Controllers {
 			}
 			return Ok(result);
 		}
+
+		[HttpDelete("cancel/id:{Guid}")]
+		public async Task<IActionResult> CancelBooking(Guid id) {
+			var result = await _bookingService.DeleteAsync(id);
+			if (!result) {
+				return BadRequest(result);
+			}
+			return Ok(result);
+		}
 	}
 }

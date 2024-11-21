@@ -1,4 +1,5 @@
-﻿using ApplicationLayer.DTOs.Pagination;
+﻿using ApplicationLayer.Common.Constants;
+using ApplicationLayer.DTOs.Pagination;
 using ApplicationLayer.DTOs.Requests.Table;
 using ApplicationLayer.DTOs.Responses;
 using ApplicationLayer.DTOs.Responses.Table;
@@ -23,6 +24,8 @@ namespace ApplicationLayer.Services {
 		public async Task<ApiResponse<TableResponse>> CreateAsync(CreateTableRequest request) {
 			try {
 				var table = _mapper.Map<Table>(request);
+				table.IsAvailable = true;
+				table.Status = TableStatus.Free;
 
 				if (table == null) {
 					return new ApiResponse<TableResponse>(false, "Internal server error occurred");
@@ -58,6 +61,10 @@ namespace ApplicationLayer.Services {
 
 				if (request.IsAvailable) {
 					tables = tables.Where(x => x.IsAvailable).ToList();
+				}
+
+				if (!string.IsNullOrEmpty(request.Status)) {
+					tables = tables.Where(x => x.Status == request.Status).ToList();
 				}
 
 				if (request.MaxCapacity > 0) {
@@ -151,7 +158,7 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<TableResponse>> UpdateAsync(UpdateTableRequest request) {
 			try {
-				var checkTableExist = await _unitOfWork.Table.GetAsync(x => x.Name == request.Name);
+				var checkTableExist = await _unitOfWork.Table.GetAsync(x => x.Id == request.Id);
 
 				if (checkTableExist == null) {
 					return new ApiResponse<TableResponse>(false, "Table already exist");
@@ -162,6 +169,31 @@ namespace ApplicationLayer.Services {
 				if (checkTableExist == null) {
 					return new ApiResponse<TableResponse>(false, "Internal server error occurred");
 				}
+
+				await _unitOfWork.Table.UpdateAsync(checkTableExist);
+				await _unitOfWork.SaveChangeAsync();
+
+				var result = _mapper.Map<TableResponse>(checkTableExist);
+
+				return new ApiResponse<TableResponse>(result, true, "Updated successfully");
+			} catch (Exception ex) {
+				_logger.LogExceptions(ex);
+				return new ApiResponse<TableResponse>(false, $"Internal server error occurred: {ex.Message}");
+			}
+		}
+
+		public async Task<ApiResponse<TableResponse>> UpdateStatusAsync(UpdateTableStatus request) {
+			try {
+				var checkTableExist = await _unitOfWork.Table.GetAsync(x => x.Id == request.TableId);
+
+				if (checkTableExist == null) {
+					return new ApiResponse<TableResponse>(false, "Table already exist");
+				}
+
+				if (request.Status == "Free") checkTableExist.Status = TableStatus.Free;
+				else if (request.Status == "Reverved") checkTableExist.Status = TableStatus.Reverved;
+				else if (request.Status == "Occupied") checkTableExist.Status = TableStatus.Occupied;
+				else checkTableExist.Status = TableStatus.Other;
 
 				await _unitOfWork.Table.UpdateAsync(checkTableExist);
 				await _unitOfWork.SaveChangeAsync();

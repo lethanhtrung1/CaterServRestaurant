@@ -78,11 +78,24 @@ namespace WebAPI.Controllers {
 
 		[HttpPut]
 		[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
-		public async Task<IActionResult> Add(UpdateTableRequest request) {
+		public async Task<IActionResult> Update(UpdateTableRequest request) {
 			if (request == null) {
 				return BadRequest("Invalid client request");
 			}
 			var result = await _service.UpdateAsync(request);
+			if (!result.Success) {
+				return BadRequest(result);
+			}
+			return Ok(result);
+		}
+
+		[HttpPut("status")]
+		[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
+		public async Task<IActionResult> UpdateStatus(UpdateTableStatus request) {
+			if (request == null) {
+				return BadRequest("Invalid client request");
+			}
+			var result = await _service.UpdateStatusAsync(request);
 			if (!result.Success) {
 				return BadRequest(result);
 			}
