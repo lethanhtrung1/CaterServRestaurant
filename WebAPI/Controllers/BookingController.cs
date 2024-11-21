@@ -51,7 +51,7 @@ namespace WebAPI.Controllers {
 
 		[HttpPost("staff")]
 		[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
-		public async Task<IActionResult> AddForStaff([FromForm] CreateBookingRequest request) {
+		public async Task<IActionResult> AddForStaff([FromBody] CreateBookingRequest request) {
 			if (request is null) {
 				return BadRequest("Invalid client request");
 			}
@@ -63,11 +63,36 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpPut]
-		public async Task<IActionResult> Update([FromForm] UpdateBookingRequest request) {
+		public async Task<IActionResult> Update([FromBody] UpdateBookingRequest request) {
 			if (request is null) {
 				return BadRequest("Invalid client request");
 			}
 			var result = await _bookingService.UpdateAsync(request);
+			if (result is null || !result.Success) {
+				return BadRequest(result);
+			}
+			return Ok(result);
+		}
+
+		[HttpPut("change-table")]
+		public async Task<IActionResult> ChangeTable([FromBody] ChangeTableRequest request) {
+			if (request is null) {
+				return BadRequest("Invalid client request");
+			}
+			var result = await _bookingService.ChangeTableAsync(request);
+			if (result is null || !result.Success) {
+				return BadRequest(result);
+			}
+			return Ok(result);
+		}
+
+		[HttpPut("status")]
+		[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
+		public async Task<IActionResult> UpdateStatus([FromBody] UpdateStatusBookingRequest request) {
+			if (request is null) {
+				return BadRequest("Invalid client request");
+			}
+			var result = await _bookingService.UpdateStatusAsync(request);
 			if (result is null || !result.Success) {
 				return BadRequest(result);
 			}

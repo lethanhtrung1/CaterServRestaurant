@@ -11,5 +11,7 @@ namespace ApplicationLayer.Interfaces {
 		Task<ApiResponse<BookingResponse>> CreateAsync(CreateBookingRequest request);
 		Task<ApiResponse<BookingResponse>> CreateForStaffAsync(CreateBookingRequest request);
 		Task<ApiResponse<BookingResponse>> UpdateAsync(UpdateBookingRequest request);
+		Task<ApiResponse<BookingResponse>> UpdateStatusAsync(UpdateStatusBookingRequest request);
+		Task<ApiResponse<BookingResponse>> ChangeTableAsync(ChangeTableRequest request);
 	}
 }

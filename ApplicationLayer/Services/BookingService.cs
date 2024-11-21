@@ -1,4 +1,5 @@
-﻿using ApplicationLayer.Common.Consumer;
+﻿using ApplicationLayer.Common.Constants;
+using ApplicationLayer.Common.Consumer;
 using ApplicationLayer.DTOs.Pagination;
 using ApplicationLayer.DTOs.Requests.Booking;
 using ApplicationLayer.DTOs.Responses;
@@ -27,9 +28,40 @@ namespace ApplicationLayer.Services {
 			_userManager = userManager;
 		}
 
+		public async Task<ApiResponse<BookingResponse>> ChangeTableAsync(ChangeTableRequest request) {
+			try {
+				var booking = await _unitOfWork.Booking.GetAsync(x => x.Id == request.BookingId);
+
+				if (booking == null) {
+					return new ApiResponse<BookingResponse>(false, $"Booking with id: {request.BookingId} not found");
+				}
+
+				var bookingTables = await _unitOfWork.BookingTable.GetListAsync(x => x.BookingId == request.BookingId);
+				await _unitOfWork.BookingTable.RemoveRangeAsync(bookingTables);
+				foreach (var item in request.TableIds) {
+					var newBookingTable = new BookingTable {
+						Id = Guid.NewGuid(),
+						TableId = item,
+						BookingId = request.BookingId,
+					};
+					await _unitOfWork.BookingTable.AddAsync(newBookingTable);
+				}
+
+				await _unitOfWork.SaveChangeAsync();
+
+				var result = _mapper.Map<BookingResponse>(booking);
+				return new ApiResponse<BookingResponse>(result, true, "Change table successfully");
+			} catch (Exception ex) {
+				_logger.LogExceptions(ex);
+				return new ApiResponse<BookingResponse>(false, $"Internal server error occurred: {ex.Message}");
+			}
+		}
+
 		public async Task<ApiResponse<BookingResponse>> CreateAsync(CreateBookingRequest request) {
 			try {
 				var bookingToDb = _mapper.Map<Booking>(request);
+				bookingToDb.BookingDate = DateTime.Now;
+				bookingToDb.Status = BookingStatus.Pending;
 				var customerId = _currentUserService.UserId;
 				if (!string.IsNullOrEmpty(customerId)) {
 					bookingToDb.CustomerId = customerId;
@@ -148,6 +180,26 @@ namespace ApplicationLayer.Services {
 
 				var result = _mapper.Map<BookingResponse>(bookingFromDb);
 				return new ApiResponse<BookingResponse>(result, true, "Updated successfully");
+			} catch (Exception ex) {
+				_logger.LogExceptions(ex);
+				return new ApiResponse<BookingResponse>(false, $"Internal server error occurred: {ex.Message}");
+			}
+		}
+
+		public async Task<ApiResponse<BookingResponse>> UpdateStatusAsync(UpdateStatusBookingRequest request) {
+			try {
+				var bookingFromDb = await _unitOfWork.Booking.GetAsync(x => x.Id == request.BookingId);
+
+				if (bookingFromDb is null) {
+					return new ApiResponse<BookingResponse>(false, $"Booking with Id: {request.BookingId} not exist");
+				}
+
+				bookingFromDb.Status = request.Status;
+				await _unitOfWork.Booking.UpdateAsync(bookingFromDb);
+				await _unitOfWork.SaveChangeAsync();
+
+				var result = _mapper.Map<BookingResponse>(bookingFromDb);
+				return new ApiResponse<BookingResponse>(result, true, "Status Updated successfully");
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
 				return new ApiResponse<BookingResponse>(false, $"Internal server error occurred: {ex.Message}");
