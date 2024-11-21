@@ -16,6 +16,7 @@ using ApplicationLayer.DTOs.Responses.Order;
 using ApplicationLayer.DTOs.Responses.PaymentDestination;
 using ApplicationLayer.DTOs.Responses.Product;
 using ApplicationLayer.DTOs.Responses.Table;
+using ApplicationLayer.DTOs.Responses.User;
 using AutoMapper;
 using DomainLayer.Entites;
 
@@ -46,6 +47,8 @@ namespace ApplicationLayer.MappingConfigs {
 
 				config.CreateMap<Merchant, MerchantResponse>();
 				config.CreateMap<PaymentDestination, PaymentDestinationResponse>();
+
+				config.CreateMap<ApplicationUser, UserResponse>();
 
 				#endregion
 

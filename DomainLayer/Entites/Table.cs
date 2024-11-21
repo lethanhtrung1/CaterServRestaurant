@@ -7,6 +7,5 @@
 		public string AreaName { get; set; }
 
 		public virtual IEnumerable<BookingTable> BookingTables { get; set; }
-		public Meal Meal { get; set; }
 	}
 }

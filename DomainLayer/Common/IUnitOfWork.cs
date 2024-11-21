@@ -21,5 +21,6 @@ namespace DomainLayer.Common {
 		IPaymentRepository Payment { get; }
 		IPaymentDestinationRepository PaymentsDestination { get; }
 		IPaymentSignatureRepository PaymentSignature { get; }
+		IApplicationUserRepository ApplicationUser { get; }
 	}
 }

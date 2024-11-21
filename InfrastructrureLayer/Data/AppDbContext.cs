@@ -121,9 +121,8 @@ namespace InfrastructrureLayer.Data {
 
 			modelBuilder.Entity<Meal>(entity => {
 				entity.HasOne(d => d.Customer)
-					.WithMany(p => p.Meals)
-					.HasForeignKey(d => d.CustomerId)
-					.OnDelete(DeleteBehavior.Cascade);
+					.WithOne(p => p.Meal)
+					.HasForeignKey<Meal>(d => d.CustomerId);
 			});
 
 			modelBuilder.Entity<MealProduct>(entity => {

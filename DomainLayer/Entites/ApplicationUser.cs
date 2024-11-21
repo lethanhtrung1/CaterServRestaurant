@@ -6,7 +6,7 @@ namespace DomainLayer.Entites {
 		public virtual IEnumerable<RefreshToken>? RefreshTokens { get; set; }
 		public virtual IEnumerable<Booking>? Bookings { get; set; }
 		public UserProfile UserProfile { get; set; }
-		public virtual IEnumerable<Meal> Meals { get; set; }
+		public virtual Meal? Meal { get; set; }
 		public virtual IEnumerable<Order>? Orders { get; set; }
 	}
 }

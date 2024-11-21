@@ -30,6 +30,7 @@ namespace ApplicationLayer.DependencyInjection
 			services.AddScoped<IMerchantService, MerchantService>();
 			services.AddScoped<IPaymentDestinationService, PaymentDestinationService>();
 			services.AddScoped<IPaymentSignatureService, PaymentSignatureService>();
+			services.AddScoped<IUserService, UserService>();
 
 			return services;
 		}

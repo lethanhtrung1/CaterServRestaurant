@@ -1,5 +1,6 @@
 ﻿using ApplicationLayer.DTOs.Requests.Meal;
 using ApplicationLayer.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebAPI.Controllers {
@@ -21,6 +22,7 @@ namespace WebAPI.Controllers {
 			return Ok(result);
 		}
 
+		[Authorize]
 		[HttpDelete]
 		public async Task<IActionResult> DeleteMeal(Guid id) {
 			return Ok(await _service.DeleteMeal(id));
@@ -35,6 +37,7 @@ namespace WebAPI.Controllers {
 			return Ok(result);
 		}
 
+		[Authorize]
 		[HttpPost]
 		public async Task<IActionResult> AddMeal(CreateMealRequest request) {
 			var result = await _service.AddProductToMeal(request);
@@ -44,15 +47,17 @@ namespace WebAPI.Controllers {
 			return Ok(result);
 		}
 
-		[HttpPost("meal-product")]
-		public async Task<IActionResult> AddMealProduct(CreateMealProductRequest request) {
-			var result = await _service.AddMealProduct(request);
-			if (result == null || !result.Success) {
-				return BadRequest(result);
-			}
-			return Ok(result);
-		}
+		//[Authorize]
+		//[HttpPost("meal-product")]
+		//public async Task<IActionResult> AddMealProduct(CreateMealProductRequest request) {
+		//	var result = await _service.AddMealProduct(request);
+		//	if (result == null || !result.Success) {
+		//		return BadRequest(result);
+		//	}
+		//	return Ok(result);
+		//}
 
+		[Authorize]
 		[HttpPut("increase")]
 		public async Task<IActionResult> IncreaseMealProduct(UpdateMealProductRequest request) {
 			var result = await _service.IncreaseMealProduct(request);
@@ -62,6 +67,7 @@ namespace WebAPI.Controllers {
 			return Ok(result);
 		}
 
+		[Authorize]
 		[HttpPut("reduce")]
 		public async Task<IActionResult> ReduceMealProduct(UpdateMealProductRequest request) {
 			var result = await _service.ReduceMealProduct(request);
