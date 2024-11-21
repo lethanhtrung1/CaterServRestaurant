@@ -12,14 +12,27 @@ namespace WebAPI.Controllers {
 			_service = service;
 		}
 
-		[HttpGet]
-		public async Task<IActionResult> Create([FromBody] CreatePaymentRequest request) {
-			return Ok();
+		//[HttpPost]
+		//public async Task<IActionResult> Create([FromBody] CreatePaymentRequest request) {
+		//	var result = await _service.CreatePayment(request);
+		//	if (result == null || !result.Success) {
+		//		return BadRequest(result);
+		//	}
+		//	return Ok(result);
+		//}
+
+		[HttpPost("payment-url")]
+		public IActionResult CreatePaymentUrl([FromBody] CreatePaymentRequest request) {
+			var result = _service.CreatePaymentUrl(request);
+			if (result == null || !result.Success) {
+				return BadRequest(result);
+			}
+			return Ok(result);
 		}
 
-		[HttpGet("vn-return")]
-		public async Task<IActionResult> VnpayReturn() {
-			return Ok();
+		[HttpGet("vnpay-return")]
+		public IActionResult VnpayReturn() {
+			return Ok("vnpay-return");
 		}
 	}
 }

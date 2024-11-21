@@ -236,14 +236,6 @@ namespace ApplicationLayer.Services {
 					return new ApiResponse<ProductResponse>(false, $"Product with id: {request.Id} not found");
 				}
 
-				// remove old thumbnail
-				if (!string.IsNullOrEmpty(checkProductFromDb.Thumbnail)) {
-					string imagePath = Path.Combine(Directory.GetCurrentDirectory(), checkProductFromDb.Thumbnail);
-					if (File.Exists(imagePath)) {
-						File.Delete(imagePath);
-					}
-				}
-
 				_mapper.Map(request, checkProductFromDb);
 				if (checkProductFromDb == null) {
 					return new ApiResponse<ProductResponse>(false, "Internal server error occurred");
@@ -251,6 +243,14 @@ namespace ApplicationLayer.Services {
 
 				// Hanle upload new thumbnail
 				if (request.File != null) {
+					// remove old thumbnail
+					if (!string.IsNullOrEmpty(checkProductFromDb.Thumbnail)) {
+						string imagePath = Path.Combine(Directory.GetCurrentDirectory(), checkProductFromDb.Thumbnail);
+						if (File.Exists(imagePath)) {
+							File.Delete(imagePath);
+						}
+					}
+
 					var file = request.File;
 					var folderName = Path.Combine("Resources", "Images");
 					var pathToSave = Path.Combine(Directory.GetCurrentDirectory(), folderName);

@@ -1,4 +1,5 @@
-﻿using DomainLayer.Entites;
+﻿using ApplicationLayer.Common.Constants;
+using DomainLayer.Entites;
 using DomainLayer.Repositories;
 using InfrastructrureLayer.Common;
 using InfrastructrureLayer.Data;
@@ -21,6 +22,7 @@ namespace InfrastructrureLayer.Repositories {
 				.Where(bt => bt.TableId == tableId)
 				.Include(bt => bt.Booking) // Load Booking để tránh NullReferenceException
 				.Select(bt => bt.Booking)
+				//.Where(x => x.Status != BookingStatus.Pending)
 				.OrderByDescending(b => b.CheckinTime)
 				.FirstOrDefaultAsync();
 

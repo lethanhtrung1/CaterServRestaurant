@@ -169,19 +169,19 @@ namespace ApplicationLayer.Services {
 				menuFromDb.Inactive = request.Inactive;
 				menuFromDb.SortOrder = request.SortOrder;
 
-				// Handle remove image
-				if (menuFromDb.ImageUrl != null) {
-					string imagePath = Path.Combine(Directory.GetCurrentDirectory(), menuFromDb.ImageUrl);
-					if (File.Exists(imagePath)) {
-						File.Delete(imagePath);
-					}
-				}
-
 				// Hanle upload image
 				var file = request.File;
 				var folderName = Path.Combine("Resources", "Images");
 				var pathToSave = Path.Combine(Directory.GetCurrentDirectory(), folderName);
 				if (file is not null) {
+					// Handle remove image
+					if (menuFromDb.ImageUrl != null) {
+						string imagePath = Path.Combine(Directory.GetCurrentDirectory(), menuFromDb.ImageUrl);
+						if (File.Exists(imagePath)) {
+							File.Delete(imagePath);
+						}
+					}
+
 					var fileName = ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName!.Trim('"'); // Content-Disposition
 					var fullPath = Path.Combine(pathToSave, fileName);
 					var dbPath = Path.Combine(folderName, fileName).Replace("\\", "/");

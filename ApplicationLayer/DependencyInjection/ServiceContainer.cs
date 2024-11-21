@@ -31,6 +31,8 @@ namespace ApplicationLayer.DependencyInjection
 			services.AddScoped<IPaymentDestinationService, PaymentDestinationService>();
 			services.AddScoped<IPaymentSignatureService, PaymentSignatureService>();
 			services.AddScoped<IUserService, UserService>();
+			services.AddScoped<IUserProfileService, UserProfileService>();
+			services.AddScoped<IPaymentService, PaymentService>();
 
 			return services;
 		}
