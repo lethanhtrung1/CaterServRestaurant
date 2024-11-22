@@ -285,7 +285,7 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<MealResponse>> RemoveMealProduct(RemoveMealProductRequest request) {
 			try {
-				var meal = await _unitOfWork.Meal.GetAsync(x => x.Id == request.MealId, includeProperties: "Table");
+				var meal = await _unitOfWork.Meal.GetAsync(x => x.Id == request.MealId);
 				if (meal == null) {
 					return new ApiResponse<MealResponse>(false, "Meal not found");
 				}
@@ -333,7 +333,7 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<MealResponse>> IncreaseMealProduct(UpdateMealProductRequest request) {
 			try {
-				var meal = await _unitOfWork.Meal.GetAsync(x => x.Id == request.MealId, includeProperties: "Table");
+				var meal = await _unitOfWork.Meal.GetAsync(x => x.Id == request.MealId);
 				if (meal == null) {
 					return new ApiResponse<MealResponse>(false, "Meal not found");
 				}
@@ -385,7 +385,7 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<MealResponse>> ReduceMealProduct(UpdateMealProductRequest request) {
 			try {
-				var meal = await _unitOfWork.Meal.GetAsync(x => x.Id == request.MealId, includeProperties: "Table");
+				var meal = await _unitOfWork.Meal.GetAsync(x => x.Id == request.MealId);
 				if (meal == null) {
 					return new ApiResponse<MealResponse>(false, "Meal not found");
 				}
