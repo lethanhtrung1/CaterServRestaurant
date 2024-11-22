@@ -63,13 +63,20 @@ namespace ApplicationLayer.Services {
 					// response
 					response = _mapper.Map<MealResponse>(newMeal);
 					var mealProductDetailResponse = _mapper.Map<MealProductDetailDto>(product);
+					var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
+					if (!string.IsNullOrEmpty(mealProductDetailResponse.Thumbnail)) {
+						mealProductDetailResponse.Thumbnail = $"{baseUrl}/{mealProductDetailResponse.Thumbnail}";
+					}
+
 					var mealProductReponse = new MealProductResponse {
 						Id = mealProduct.Id,
 						ProductDetail = mealProductDetailResponse,
 						Quantity = mealProduct.Quantity,
 						Price = mealProduct.Price,
 					};
-					response.Products = _mapper.Map<List<MealProductResponse>>(mealProductReponse);
+					var mealProductListResponse = new List<MealProductResponse>();
+					mealProductListResponse.Add(mealProductReponse);
+					response.Products = _mapper.Map<List<MealProductResponse>>(mealProductListResponse);
 				}
 				// meal already exists -> only add new meal product
 				else {
