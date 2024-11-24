@@ -1,4 +1,5 @@
-﻿using ApplicationLayer.Common.Consumer;
+﻿using ApplicationLayer.Common.Constants;
+using ApplicationLayer.Common.Consumer;
 using ApplicationLayer.DTOs.Requests.Payment;
 using ApplicationLayer.DTOs.Responses;
 using ApplicationLayer.DTOs.Responses.Payment;
@@ -31,6 +32,7 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<PaymentLinkDto>> CreatePayment(CreatePaymentRequest request) {
 			try {
+				await _unitOfWork.Payment.BeginTransactionAsync();
 				var newPayment = new Payment {
 					Id = Guid.NewGuid(),
 					PaymentContent = request.PaymentContent,
@@ -41,7 +43,8 @@ namespace ApplicationLayer.Services {
 					PaymentLanguage = request.PaymentLanguage,
 					OrderId = request.OrderId,
 					MerchantId = request.MerchantId,
-					PaymentDestinationId = request.PaymentDestinationId
+					PaymentDestinationId = request.PaymentDestinationId,
+					PaymentStatus = PaymentStatus.Unpaid,
 				};
 				await _unitOfWork.Payment.AddAsync(newPayment);
 
@@ -56,6 +59,7 @@ namespace ApplicationLayer.Services {
 				};
 				await _unitOfWork.PaymentSignature.AddAsync(newPaymentSign);
 				await _unitOfWork.SaveChangeAsync();
+				await _unitOfWork.Payment.EndTransactionAsync();
 
 				var paymentUrl = string.Empty;
 
@@ -90,6 +94,7 @@ namespace ApplicationLayer.Services {
 
 				return new ApiResponse<PaymentLinkDto>(result, true, "Create payment successfully");
 			} catch (Exception ex) {
+				await _unitOfWork.Payment.RollBackTransactionAsync();
 				_logger.LogExceptions(ex);
 				throw new Exception("An error occurred while creating payment", ex);
 			}
@@ -128,8 +133,87 @@ namespace ApplicationLayer.Services {
 			}
 		}
 
-		public Task<ApiResponse<(PaymentReturnDto, string)>> PaymentReturn(VnpayPayResponse request) {
-			throw new NotImplementedException();
+		public async Task<ApiResponse<(PaymentReturnDto, string)>> PaymentReturn(VnpayPayResponse request) {
+			string returnUrl = string.Empty;
+			var result = new ApiResponse<(PaymentReturnDto, string)>();
+
+			await _unitOfWork.Payment.BeginTransactionAsync();
+			try {
+				//var orderId = Guid.Parse(request.vnp_TxnRef);
+				//var order = await _unitOfWork.Order.GetAsync(x => x.Id == orderId);
+
+				//if (order == null || order.OrderStatus == OrderStatus.Completed) {
+				//	return new ApiResponse<(PaymentReturnDto, string)>(false, "Link invalid");
+				//}
+
+				var resultData = new PaymentReturnDto();
+				var isValidSignature = request.IsValidSignature(_vnpayOptions.HashSecret);
+
+				if (isValidSignature) {
+					var paymentId = Guid.Parse(request.vnp_TxnRef);
+					var payment = await _unitOfWork.Payment.GetAsync(x => x.Id == paymentId);
+
+					if (payment != null) {
+						var merchant = await _unitOfWork.Merchant.GetAsync(x => x.Id == payment.MerchantId);
+						returnUrl = merchant.MerchantReturnUrl ?? "https://localhost:5173/payment";
+
+						var order = await _unitOfWork.Order.GetAsync(x => x.Id == payment.OrderId);
+						if (order == null || order.OrderStatus == OrderStatus.Completed) {
+							return new ApiResponse<(PaymentReturnDto, string)>(false, "Link payment invalid");
+						}
+
+						// payment success
+						if (request.vnp_ResponseCode == "00" && request.vnp_TransactionStatus == "00") {
+							resultData.PaymentStatus = "00";
+							resultData.PaymentId = paymentId;
+							resultData.PaymentMessage = "Confitm success";
+							resultData.Amount = request.vnp_Amount;
+							resultData.PaymentDate = DateTime.Parse(request.vnp_PayDate);
+
+							payment.PaymentStatus = PaymentStatus.Completed;
+
+							// Update order status
+							order.OrderStatus = OrderStatus.Completed;
+							await _unitOfWork.Order.UpdateAsync(order);
+
+							// return url
+							returnUrl = $"{returnUrl}/confirm";
+						} 
+						// Payment failed
+						else {
+							resultData.PaymentStatus = "10";
+							resultData.PaymentMessage = "Payment process failed";
+
+							payment!.PaymentStatus = PaymentStatus.Failed;
+
+							// return url
+							returnUrl = $"{returnUrl}/reject";
+						}
+					} else {
+						resultData.PaymentStatus = "11";
+						resultData.PaymentMessage = "Can't find payment";
+
+						payment!.PaymentStatus = PaymentStatus.Failed;
+
+						// return url
+						returnUrl = $"{returnUrl}/reject";
+					}
+
+					await _unitOfWork.Payment.UpdateAsync(payment);
+					await _unitOfWork.SaveChangeAsync();
+					await _unitOfWork.Payment.EndTransactionAsync();
+
+					result.Success = true;
+					result.Message = "Confirm payment successfully";
+					result.Data = (resultData, returnUrl);
+				}
+			} catch (Exception ex) {
+				await _unitOfWork.Payment.RollBackTransactionAsync();
+				result.Success = false;
+				result.Message = ex.Message;
+				result.Data = (null, string.Empty)!;
+			}
+			return result;
 		}
 	}
 }
