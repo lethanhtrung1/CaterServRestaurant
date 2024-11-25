@@ -13,9 +13,18 @@ namespace WebAPI.Controllers {
 			_service = service;
 		}
 
-		[HttpGet]
-		public async Task<IActionResult> GetMeal(Guid id) {
+		[HttpGet("{id}")]
+		public async Task<IActionResult> GetMealById(Guid id) {
 			var result = await _service.GetMeal(id);
+			if (result == null || !result.Success) {
+				return BadRequest(result);
+			}
+			return Ok(result);
+		}
+
+		[HttpGet("customer")]
+		public async Task<IActionResult> GetMealByCustomerId() {
+			var result = await _service.GetMealByCustomerId();
 			if (result == null || !result.Success) {
 				return BadRequest(result);
 			}

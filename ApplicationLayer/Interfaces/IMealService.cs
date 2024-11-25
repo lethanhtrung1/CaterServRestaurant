@@ -7,6 +7,7 @@ namespace ApplicationLayer.Interfaces {
 		Task<ApiResponse<MealResponse>> AddProductToMeal(CreateMealRequest request);
 		Task<bool> DeleteMeal(Guid id);
 		Task<ApiResponse<MealResponse>> GetMeal(Guid id);
+		Task<ApiResponse<MealResponse>> GetMealByCustomerId();
 		Task<ApiResponse<MealResponse>> IncreaseMealProduct(UpdateMealProductRequest request);
 		Task<ApiResponse<MealResponse>> ReduceMealProduct(UpdateMealProductRequest request);
 		//Task<ApiResponse<MealResponse>> AddMealProduct(CreateMealProductRequest request);

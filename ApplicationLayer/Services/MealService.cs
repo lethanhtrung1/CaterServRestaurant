@@ -199,6 +199,47 @@ namespace ApplicationLayer.Services {
 			}
 		}
 
+		public async Task<ApiResponse<MealResponse>> GetMealByCustomerId() {
+			try {
+				var customerId = _currentUserService.UserId;
+				var meal = await _unitOfWork.Meal.GetAsync(x => x.CustomerId == customerId);
+				if (meal == null) {
+					return new ApiResponse<MealResponse>(false, "Meal not found");
+				}
+
+				var response = _mapper.Map<MealResponse>(meal);
+				//response.TableId = meal.TableId;
+				//response.TableName = meal.Table.Name;
+				response.Products = new List<MealProductResponse>();
+
+				var mealProducts = await _unitOfWork.MealProduct.GetListAsync(x => x.MealId == meal.Id);
+
+				foreach (var item in mealProducts) {
+					var productDetail = await _unitOfWork.Product.GetAsync(x => x.Id == item.ProductId);
+					item.Price = productDetail.Price * item.Quantity;
+					var productDto = _mapper.Map<MealProductDetailDto>(productDetail);
+
+					// if thumbnail is not null -> return full path
+					var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
+					if (!string.IsNullOrEmpty(productDto.Thumbnail)) {
+						productDto.Thumbnail = $"{baseUrl}/{productDto.Thumbnail}";
+					}
+
+					var mealProductDto = _mapper.Map<MealProductResponse>(item);
+					mealProductDto.ProductDetail = productDto;
+
+					response.Products.Add(mealProductDto);
+				}
+
+				response.TotalPrice = response.Products.Select(x => x.Price).Sum();
+
+				return new ApiResponse<MealResponse>(response, true, "");
+			} catch (Exception ex) {
+
+				return new ApiResponse<MealResponse>(false, $"{ex.Message}");
+			}
+		}
+
 		//public async Task<ApiResponse<MealResponse>> AddMealProduct(CreateMealProductRequest request) {
 		//	try {
 		//		var meal = await _unitOfWork.Meal.GetAsync(x => x.Id == request.MealId, includeProperties: "Table,MealProducts");
