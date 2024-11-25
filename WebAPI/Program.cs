@@ -1,4 +1,5 @@
 using ApplicationLayer.DependencyInjection;
+using ApplicationLayer.Options;
 using InfrastructrureLayer.Data;
 using InfrastructrureLayer.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
@@ -22,13 +23,15 @@ builder.Services.AddCors(options => {
 	options.AddPolicy(
 		name: "allowSpecificOrigins",
 		policy => {
-			policy.WithOrigins("*")
+			policy.WithOrigins("https://localhost:5173", "http://localhost:5173")
 				.AllowAnyMethod()
 				.AllowAnyHeader()
 				.AllowCredentials();
 		}
 	);
 });
+
+builder.Services.Configure<VnpayOptions>(builder.Configuration.GetSection(VnpayOptions.ConfigName));
 
 var app = builder.Build();
 
@@ -47,6 +50,8 @@ app.UseStaticFiles(new StaticFileOptions {
 	FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), @"Resources")),
 	RequestPath = new PathString("/Resources")
 });
+
+app.UseCors("allowSpecificOrigins");
 
 app.UseAuthentication();
 
