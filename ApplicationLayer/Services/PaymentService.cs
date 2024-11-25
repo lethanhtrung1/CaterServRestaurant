@@ -168,7 +168,7 @@ namespace ApplicationLayer.Services {
 							resultData.PaymentId = paymentId;
 							resultData.PaymentMessage = "Confitm success";
 							resultData.Amount = request.vnp_Amount;
-							resultData.PaymentDate = DateTime.Parse(request.vnp_PayDate);
+							resultData.PaymentDate = DateTime.ParseExact(request.vnp_PayDate, "yyyyMMddHHmmss", System.Globalization.CultureInfo.InvariantCulture);
 
 							payment.PaymentStatus = PaymentStatus.Completed;
 
