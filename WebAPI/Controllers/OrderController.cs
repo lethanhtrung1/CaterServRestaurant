@@ -79,5 +79,27 @@ namespace WebAPI.Controllers {
 			}
 			return Ok(result);
 		}
+
+		[HttpPost("staff/order")]
+		public async Task<IActionResult> CreateOrderStaff(Guid BookingId) {
+			var result = await _orderService.CreateOrderByBooking(BookingId);
+
+			if (result == null || !result.Success) {
+				return BadRequest(result);
+			}
+
+			return Ok(result);
+		}
+
+		[HttpPost("staff/order-detail")]
+		public async Task<IActionResult> AddOrderDetail([FromBody] CreateOrderDetailRequest request) {
+			var result = await _orderService.AddOrderOrderDetail(request);
+
+			if (result ==  null || !result.Success) {
+				return BadRequest(result);
+			}
+
+			return Ok(result);
+		}
 	}
 }

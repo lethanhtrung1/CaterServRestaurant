@@ -19,6 +19,11 @@ namespace InfrastructrureLayer.Common {
 			await _dbContext.AddAsync(entity);
 		}
 
+		public async Task<bool> AnyAsync(Expression<Func<T, bool>> predicate) {
+			IQueryable<T> query = _dbSet;
+			return await query.AnyAsync(predicate);
+		}
+
 		public Task<IDbContextTransaction> BeginTransactionAsync()
 			=> _dbContext.Database.BeginTransactionAsync();
 

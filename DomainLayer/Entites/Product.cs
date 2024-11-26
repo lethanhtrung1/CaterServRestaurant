@@ -16,5 +16,6 @@
 		public virtual IEnumerable<OrderDetail>? OrderDetails { get; set; }
 		public virtual IEnumerable<ProductImage>? ProductImages { get; set; }
 		public virtual IEnumerable<MealProduct>? MealProducts { get; set; }
+		public virtual IEnumerable<Review>? Reviews { get; set; }
 	}
 }

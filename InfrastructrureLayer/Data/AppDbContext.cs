@@ -28,6 +28,7 @@ namespace InfrastructrureLayer.Data {
 		public virtual DbSet<PaymentSignature> PaymentSignatures { get; set; }
 		public virtual DbSet<Merchant> Merchants { get; set; }
 		//public virtual DbSet<UserCoupon> UserCoupons { get; set; }
+		public virtual DbSet<Review> Reviews { get; set; }
 
 		#endregion
 
@@ -160,6 +161,16 @@ namespace InfrastructrureLayer.Data {
 				entity.HasOne(d => d.Payment)
 					.WithMany(p => p.PaymentSignature)
 					.HasForeignKey(d => d.PaymentId);
+			});
+
+			modelBuilder.Entity<Review>(entity => {
+				entity.HasOne(d => d.Product)
+					.WithMany(p => p.Reviews)
+					.HasForeignKey(d => d.ProductId);
+
+				entity.HasOne(d => d.User)
+					.WithMany(p => p.Reviews)
+					.HasForeignKey(d => d.UserId);
 			});
 		}
 	}

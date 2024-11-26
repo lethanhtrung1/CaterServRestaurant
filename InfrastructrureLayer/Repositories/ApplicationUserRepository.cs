@@ -18,6 +18,11 @@ namespace InfrastructrureLayer.Repositories {
 			await _dbSet.AddAsync(entity);
 		}
 
+		public async Task<bool> AnyAsync(Expression<Func<ApplicationUser, bool>> predicate) {
+			IQueryable<ApplicationUser> query = _dbSet;
+			return await query.AnyAsync(predicate);
+		}
+
 		public async Task<ApplicationUser> GetAsync(Expression<Func<ApplicationUser, bool>> predicate) {
 			IQueryable<ApplicationUser> query = _dbSet.Where(predicate);
 			return await query.FirstAsync();

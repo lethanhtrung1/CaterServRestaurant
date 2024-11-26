@@ -166,7 +166,7 @@ namespace ApplicationLayer.Services {
 						if (request.vnp_ResponseCode == "00" && request.vnp_TransactionStatus == "00") {
 							resultData.PaymentStatus = "00";
 							resultData.PaymentId = paymentId;
-							resultData.PaymentMessage = "Confitm success";
+							resultData.PaymentMessage = "Confirm success";
 							resultData.Amount = request.vnp_Amount;
 							resultData.PaymentDate = DateTime.ParseExact(request.vnp_PayDate, "yyyyMMddHHmmss", System.Globalization.CultureInfo.InvariantCulture);
 

@@ -13,5 +13,7 @@ namespace ApplicationLayer.Interfaces {
 		Task<bool> CancelOrder(Guid orderId);
 		Task<ApiResponse<PagedList<OrderResponse>>> GetOrders(GetOrdersPagingRequest request);
 		Task<ApiResponse<PagedList<OrderResponse>>> GetOrdersByUserId(string userId, GetOrdersPagingRequest request);
+		Task<ApiResponse<OrderResponse>> CreateOrderByBooking(Guid bookingId);
+		Task<ApiResponse<OrderResponse>> AddOrderOrderDetail(CreateOrderDetailRequest request);
 	}
 }

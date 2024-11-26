@@ -236,7 +236,7 @@ namespace ApplicationLayer.Services {
 				var orders = await _unitOfWork.Order.GetListAsync();
 
 				if (!string.IsNullOrEmpty(request.OrderStatus)) {
-					orders = orders.Where(x => x.OrderStatus ==  request.OrderStatus).ToList();
+					orders = orders.Where(x => x.OrderStatus == request.OrderStatus).ToList();
 				}
 
 				if (request.SortBy != 0) {
@@ -307,10 +307,6 @@ namespace ApplicationLayer.Services {
 			}
 		}
 
-		//public Task<ApiResponse<OrderResponse>> UpdateOrder(UpdateOrderRequest request) {
-		//	throw new NotImplementedException();
-		//}
-
 		public async Task<ApiResponse<OrderResponse>> UpdateOrderStatus(UpdateOrderStatusRequest request) {
 			try {
 				var order = await _unitOfWork.Order.GetAsync(x => x.Id == request.Id);
@@ -330,6 +326,79 @@ namespace ApplicationLayer.Services {
 				else result.OrderTypeName = "";
 
 				return new ApiResponse<OrderResponse>(result, true, "Update status successfully");
+			} catch (Exception ex) {
+				_logger.LogExceptions(ex);
+				return new ApiResponse<OrderResponse>(false, $"Internal server error occurred: {ex.Message}");
+			}
+		}
+
+		public async Task<ApiResponse<OrderResponse>> CreateOrderByBooking(Guid bookingId) {
+			try {
+				var order = new Order {
+					Id = Guid.NewGuid(),
+					BookingId = bookingId,
+					CustomerId = null,
+					CreatedDate = DateTime.Now,
+					ShippingDate = null,
+					ShippingAddress = string.Empty,
+					CustomerName = string.Empty,
+					CustomerPhone = string.Empty,
+					DeliveryAmount = 0,
+					DepositAmount = 0,
+					DiscountAmount = 0,
+					TotalAmount = 0,
+					OrderType = 1,
+					OrderStatus = OrderStatus.Processing,
+				};
+
+				await _unitOfWork.Order.AddAsync(order);
+				await _unitOfWork.SaveChangeAsync();
+
+				var response = _mapper.Map<OrderResponse>(order);
+
+				return new ApiResponse<OrderResponse>(response, true, "Create order successfully");
+			} catch (Exception ex) {
+				_logger.LogExceptions(ex);
+				return new ApiResponse<OrderResponse>(false, $"Internal server error occurred: {ex.Message}");
+			}
+		}
+
+		public async Task<ApiResponse<OrderResponse>> AddOrderOrderDetail(CreateOrderDetailRequest request) {
+			try {
+				var checkOrder = await _unitOfWork.Order.GetAsync(x => x.Id == request.OrderId);
+				if (checkOrder == null) {
+					return new ApiResponse<OrderResponse>(false, "Order not found");
+				}
+
+				var product = await _unitOfWork.Product.GetAsync(x => x.Id == request.ProductId);
+				if (product == null) {
+					return new ApiResponse<OrderResponse>(false, "Product not found");
+				}
+
+				var newOrderDetail = new OrderDetail {
+					Id = Guid.NewGuid(),
+					OrderId = request.OrderId,
+					ProductId = product.Id,
+					ProductName = product.Name,
+					Quantity = request.Quantity,
+					Price = product.Price,
+					TotalPrice = request.Quantity * product.Price,
+					UnitName = product.UnitName!
+				};
+
+				await _unitOfWork.OrderDetail.AddAsync(newOrderDetail);
+				checkOrder.TotalAmount += newOrderDetail.TotalPrice;
+				await _unitOfWork.Order.UpdateAsync(checkOrder);
+				await _unitOfWork.SaveChangeAsync();
+
+				var orderDetails = await _unitOfWork.OrderDetail.GetListAsync(x => x.OrderId == checkOrder.Id);
+
+				var orderDetailsResponse = _mapper.Map<List<OrderDetailResponse>>(orderDetails);
+				var orderResponse = _mapper.Map<OrderResponse>(checkOrder);
+
+				orderResponse.OrderDetails = orderDetailsResponse;
+
+				return new ApiResponse<OrderResponse>(orderResponse, true, "Success");
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
 				return new ApiResponse<OrderResponse>(false, $"Internal server error occurred: {ex.Message}");

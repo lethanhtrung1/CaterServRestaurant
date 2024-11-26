@@ -15,6 +15,7 @@ using ApplicationLayer.DTOs.Responses.Merchant;
 using ApplicationLayer.DTOs.Responses.Order;
 using ApplicationLayer.DTOs.Responses.PaymentDestination;
 using ApplicationLayer.DTOs.Responses.Product;
+using ApplicationLayer.DTOs.Responses.Review;
 using ApplicationLayer.DTOs.Responses.Table;
 using ApplicationLayer.DTOs.Responses.User;
 using ApplicationLayer.DTOs.Responses.UserProfile;
@@ -48,6 +49,8 @@ namespace ApplicationLayer.MappingConfigs {
 				config.CreateMap<ApplicationUser, UserResponse>();
 				config.CreateMap<UserProfile, UserProfileResponse>();
 				config.CreateMap<UserProfile, StaffProfileResponse>();
+
+				config.CreateMap<Review, ReviewResponse>();
 
 				#endregion
 

@@ -44,6 +44,7 @@ namespace InfrastructrureLayer.Authentication {
 				Issuer = _jwtOptions["Issuer"],
 				Subject = new ClaimsIdentity(new[] {
 					new Claim(ClaimTypes.NameIdentifier, user.Id),
+					new Claim(ClaimTypes.Email, user.Email!),
 					new Claim(JwtRegisteredClaimNames.Sub, user.Email!),
 					new Claim(JwtRegisteredClaimNames.Email, user.Email!),
 					new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),

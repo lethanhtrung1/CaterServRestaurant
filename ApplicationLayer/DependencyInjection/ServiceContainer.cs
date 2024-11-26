@@ -33,6 +33,7 @@ namespace ApplicationLayer.DependencyInjection
 			services.AddScoped<IUserService, UserService>();
 			services.AddScoped<IUserProfileService, UserProfileService>();
 			services.AddScoped<IPaymentService, PaymentService>();
+			services.AddScoped<IReviewService, ReviewService>();
 
 			return services;
 		}
