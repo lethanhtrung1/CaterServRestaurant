@@ -111,6 +111,7 @@ namespace ApplicationLayer.Services {
 						await _unitOfWork.MealProduct.RemoveRangeAsync(mealProducts);
 						await _unitOfWork.Meal.RemoveAsync(meal);
 						await _unitOfWork.SaveChangeAsync();
+						await _unitOfWork.Order.EndTransactionAsync();
 						return new ApiResponse<OrderResponse>(response, true, "Create Order successfully");
 					}
 				}

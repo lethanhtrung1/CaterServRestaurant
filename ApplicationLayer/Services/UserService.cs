@@ -1,4 +1,5 @@
-﻿using ApplicationLayer.DTOs.Pagination;
+﻿using ApplicationLayer.Common.Constants;
+using ApplicationLayer.DTOs.Pagination;
 using ApplicationLayer.DTOs.Requests.User;
 using ApplicationLayer.DTOs.Responses;
 using ApplicationLayer.DTOs.Responses.User;
@@ -7,6 +8,7 @@ using AutoMapper;
 using DomainLayer.Common;
 using DomainLayer.Entites;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace ApplicationLayer.Services {
 	public class UserService : IUserService {
@@ -52,19 +54,48 @@ namespace ApplicationLayer.Services {
 					PasswordHash = request.Password
 				};
 
+				await _unitOfWork.UserProfile.BeginTransactionAsync();
+
 				var createUser = await _userManager.CreateAsync(newUser, request.Password);
 				if (!createUser.Succeeded) {
+					await _unitOfWork.UserProfile.RollBackTransactionAsync();
+					return new ApiResponse<UserResponse>(false, "Error occured while creating account");
+				}
+
+				var role = await _roleManager.FindByIdAsync(request.RoleId);
+
+				if (role == null) {
+					await _unitOfWork.UserProfile.RollBackTransactionAsync();
 					return new ApiResponse<UserResponse>(false, "Error occured while creating account");
 				}
 
 				// Add role for user
-				IdentityResult assignRoleResult = await _userManager.AddToRoleAsync(newUser, request.Role);
+				IdentityResult assignRoleResult = await _userManager.AddToRoleAsync(newUser, role.Name!);
 				if (!assignRoleResult.Succeeded) {
+					await _unitOfWork.UserProfile.RollBackTransactionAsync();
 					return new ApiResponse<UserResponse>(false, "Error occured while creating account");
 				}
 
+				var userProfile = new UserProfile {
+					Id = Guid.NewGuid(),
+					FirstName = request.FirstName!,
+					LastName = request.LastName!,
+					PhoneNumber = request.PhoneNumber!,
+					Address = request.Address!,
+					Gender = request.Gender!,
+					Birthday = request.Birthday,
+					Bank = request.Bank,
+					BankBranch = request.BankBranch,
+					BankNumber = request.BankNumber,
+				};
+
+				await _unitOfWork.UserProfile.AddAsync(userProfile);
+				await _unitOfWork.SaveChangeAsync();
+				await _unitOfWork.UserProfile.EndTransactionAsync();
+
 				return new ApiResponse<UserResponse>(true, "Create new user successfully");
 			} catch (Exception ex) {
+				await _unitOfWork.UserProfile.RollBackTransactionAsync();
 				throw new Exception("Error occured while creating account", ex);
 			}
 		}
@@ -105,6 +136,12 @@ namespace ApplicationLayer.Services {
 			} catch (Exception ex) {
 				throw new Exception("Error occured while retrieving users", ex);
 			}
+		}
+
+		public async Task<ApiResponse<List<RoleResponse>>> GetRoles() {
+			var roles = await _roleManager.Roles.ToListAsync();
+			var result = _mapper.Map<List<RoleResponse>>(roles);
+			return new ApiResponse<List<RoleResponse>>(result, true, "Retrieve Roles successfully");
 		}
 
 		public async Task<bool> UnbanUser(string id) {

@@ -10,5 +10,6 @@ namespace ApplicationLayer.Interfaces {
 		Task<ApiResponse<UserResponse>> CreateUser(CreateUserRequest request);
 		Task<bool> BanUser(string id);
 		Task<bool> UnbanUser(string id);
+		Task<ApiResponse<List<RoleResponse>>> GetRoles();
 	}
 }

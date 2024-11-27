@@ -7,20 +7,17 @@ using AutoMapper;
 using DomainLayer.Common;
 using DomainLayer.Entites;
 using DomainLayer.Exceptions;
-using Microsoft.AspNetCore.Http;
 
 namespace ApplicationLayer.Services {
 	public class MealService : IMealService {
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly IMapper _mapper;
 		private readonly ICurrentUserService _currentUserService;
-		private readonly IHttpContextAccessor _httpContextAccessor;
 
-		public MealService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentUserService currentUserService, IHttpContextAccessor httpContextAccessor) {
+		public MealService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentUserService currentUserService) {
 			_unitOfWork = unitOfWork;
 			_mapper = mapper;
 			_currentUserService = currentUserService;
-			_httpContextAccessor = httpContextAccessor;
 		}
 
 		public async Task<ApiResponse<MealResponse>> AddProductToMeal(CreateMealRequest request) {
@@ -63,10 +60,6 @@ namespace ApplicationLayer.Services {
 					// response
 					response = _mapper.Map<MealResponse>(newMeal);
 					var mealProductDetailResponse = _mapper.Map<MealProductDetailDto>(product);
-					var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
-					if (!string.IsNullOrEmpty(mealProductDetailResponse.Thumbnail)) {
-						mealProductDetailResponse.Thumbnail = $"{baseUrl}/{mealProductDetailResponse.Thumbnail}";
-					}
 
 					var mealProductReponse = new MealProductResponse {
 						Id = mealProduct.Id,
@@ -121,12 +114,6 @@ namespace ApplicationLayer.Services {
 						item.Price = productDetail.Price * item.Quantity;
 						var productDto = _mapper.Map<MealProductDetailDto>(productDetail);
 
-						// if thumbnail is not null -> return full path
-						var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
-						if (!string.IsNullOrEmpty(productDto.Thumbnail)) {
-							productDto.Thumbnail = $"{baseUrl}/{productDto.Thumbnail}";
-						}
-
 						var mealProductDto = _mapper.Map<MealProductResponse>(item);
 						mealProductDto.ProductDetail = productDto;
 
@@ -178,12 +165,6 @@ namespace ApplicationLayer.Services {
 					item.Price = productDetail.Price * item.Quantity;
 					var productDto = _mapper.Map<MealProductDetailDto>(productDetail);
 
-					// if thumbnail is not null -> return full path
-					var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
-					if (!string.IsNullOrEmpty(productDto.Thumbnail)) {
-						productDto.Thumbnail = $"{baseUrl}/{productDto.Thumbnail}";
-					}
-
 					var mealProductDto = _mapper.Map<MealProductResponse>(item);
 					mealProductDto.ProductDetail = productDto;
 
@@ -218,12 +199,6 @@ namespace ApplicationLayer.Services {
 					var productDetail = await _unitOfWork.Product.GetAsync(x => x.Id == item.ProductId);
 					item.Price = productDetail.Price * item.Quantity;
 					var productDto = _mapper.Map<MealProductDetailDto>(productDetail);
-
-					// if thumbnail is not null -> return full path
-					var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
-					if (!string.IsNullOrEmpty(productDto.Thumbnail)) {
-						productDto.Thumbnail = $"{baseUrl}/{productDto.Thumbnail}";
-					}
 
 					var mealProductDto = _mapper.Map<MealProductResponse>(item);
 					mealProductDto.ProductDetail = productDto;
@@ -403,12 +378,6 @@ namespace ApplicationLayer.Services {
 					item.Price = productDetail.Price * item.Quantity;
 					var productDto = _mapper.Map<MealProductDetailDto>(productDetail);
 
-					// if thumbnail is not null -> return full path
-					var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
-					if (!string.IsNullOrEmpty(productDto.Thumbnail)) {
-						productDto.Thumbnail = $"{baseUrl}/{productDto.Thumbnail}";
-					}
-
 					var mealProductDto = _mapper.Map<MealProductResponse>(item);
 					mealProductDto.ProductDetail = productDto;
 
@@ -458,12 +427,6 @@ namespace ApplicationLayer.Services {
 					var productDetail = await _unitOfWork.Product.GetAsync(x => x.Id == item.ProductId);
 					item.Price = productDetail.Price * item.Quantity;
 					var productDto = _mapper.Map<MealProductDetailDto>(productDetail);
-
-					// if thumbnail is not null -> return full path
-					var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
-					if (!string.IsNullOrEmpty(productDto.Thumbnail)) {
-						productDto.Thumbnail = $"{baseUrl}/{productDto.Thumbnail}";
-					}
 
 					var mealProductDto = _mapper.Map<MealProductResponse>(item);
 					mealProductDto.ProductDetail = productDto;

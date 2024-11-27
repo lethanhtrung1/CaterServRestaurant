@@ -1,7 +1,9 @@
-﻿using ApplicationLayer.Common.Consumer;
+﻿using ApplicationLayer.Common.Constants;
+using ApplicationLayer.Common.Consumer;
 using ApplicationLayer.DTOs.Pagination;
 using ApplicationLayer.DTOs.Requests.User;
 using ApplicationLayer.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebAPI.Controllers {
@@ -16,12 +18,13 @@ namespace WebAPI.Controllers {
 			_userService = userService;
 		}
 
-		[HttpGet("curent-user")]
+		[HttpGet("current-user")]
 		public IActionResult Get() {
 			return Ok(_currentUserService.UserId);
 		}
 
 		[HttpGet("{id}")]
+		[Authorize(Roles = $"{Role.ADMIN}")]
 		public async Task<IActionResult> GetById(string id) {
 			var result = await _userService.GetById(id);
 			if (result == null || !result.Success) {
@@ -31,6 +34,7 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpGet("paging")]
+		[Authorize(Roles = $"{Role.ADMIN}")]
 		public async Task<IActionResult> GetPaging([FromQuery] PagingRequest request) {
 			var result = await _userService.GetPaging(request);
 			if (result == null || !result.Success) {
@@ -40,6 +44,7 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpPost]
+		[Authorize(Roles = $"{Role.ADMIN}")]
 		public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request) {
 			var result = await _userService.CreateUser(request);
 			if (result == null || !result.Success) {
@@ -49,6 +54,7 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpPut("ban-user/{id}")]
+		[Authorize(Roles = $"{Role.ADMIN}")]
 		public async Task<IActionResult> BanUser(string id) {
 			var result = await _userService.BanUser(id);
 			if (!result) {
@@ -58,12 +64,19 @@ namespace WebAPI.Controllers {
 		}
 
 		[HttpPut("unban/{id}")]
+		[Authorize(Roles = $"{Role.ADMIN}")]
 		public async Task<IActionResult> UnbanUser(string id) {
 			var result = await _userService.UnbanUser(id);
 			if (!result) {
 				return BadRequest(result);
 			}
 			return Ok(result);
+		}
+
+		[HttpGet("roles")]
+		[Authorize(Roles = $"{Role.ADMIN}")]
+		public async Task<IActionResult> GetRoles() {
+			return Ok(await _userService.GetRoles());
 		}
 	}
 }

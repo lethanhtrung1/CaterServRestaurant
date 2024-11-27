@@ -56,8 +56,10 @@ namespace ApplicationLayer.MappingConfigs {
 
 				config.CreateMap<UserProfile, UserProfileResponse>();
 				config.CreateMap<UserProfile, StaffProfileResponse>();
+				config.CreateMap<UserRole, RoleResponse>();
 
 				config.CreateMap<Review, ReviewResponse>();
+
 
 				#endregion
 
