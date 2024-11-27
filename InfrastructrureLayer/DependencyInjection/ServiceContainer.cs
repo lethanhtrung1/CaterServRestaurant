@@ -30,6 +30,14 @@ namespace InfrastructrureLayer.DependencyInjection {
 				options.Password.RequireNonAlphanumeric = true;
 				options.Password.RequireUppercase = true;
 				options.Password.RequireLowercase = true;
+
+				// User lockout
+				options.Lockout.AllowedForNewUsers = true;
+				options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+				options.Lockout.MaxFailedAccessAttempts = 5;
+
+				// Reset password
+				options.Tokens.PasswordResetTokenProvider = TokenOptions.DefaultEmailProvider;
 			})
 				.AddEntityFrameworkStores<AppDbContext>()
 				.AddDefaultTokenProviders();

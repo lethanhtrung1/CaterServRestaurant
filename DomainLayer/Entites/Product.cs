@@ -7,6 +7,7 @@
 		public decimal SellingPrice { get; set; }
 		public string? UnitName {  get; set; }
 		public string? Thumbnail {  get; set; }
+		public string? ThumbnailPublicId { get; set; }
 		public bool Inactive { get; set; }
 		public Guid CategoryId { get; set; }
 		public Guid MenuId { get; set; }

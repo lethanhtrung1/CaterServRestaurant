@@ -3,27 +3,40 @@ using ApplicationLayer.DTOs.Requests.UserProfile;
 using ApplicationLayer.DTOs.Responses;
 using ApplicationLayer.DTOs.Responses.UserProfile;
 using ApplicationLayer.Interfaces;
+using ApplicationLayer.Logging;
+using ApplicationLayer.Options;
 using AutoMapper;
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
 using DomainLayer.Common;
 using DomainLayer.Entites;
-using Microsoft.AspNetCore.Http;
-using System.Net.Http.Headers;
+using Microsoft.Extensions.Options;
 
 namespace ApplicationLayer.Services {
 	public class UserProfileService : IUserProfileService {
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly IMapper _mapper;
 		private readonly ICurrentUserService _currentUserService;
-		private readonly IHttpContextAccessor _httpContextAccessor;
+		private readonly Cloudinary _cloudinary;
+		private readonly CloudinaryOptions _cloudinaryOptions;
+		private readonly ILogException _logger;
 
 		public UserProfileService(IUnitOfWork unitOfWork, IMapper mapper,
 			ICurrentUserService currentUserService,
-			IHttpContextAccessor httpContextAccessor
+			IOptions<CloudinaryOptions> options,
+			ILogException logger
 		) {
 			_mapper = mapper;
 			_unitOfWork = unitOfWork;
 			_currentUserService = currentUserService;
-			_httpContextAccessor = httpContextAccessor;
+			_logger = logger;
+			_cloudinaryOptions = options.Value;
+			Account account = new Account(
+				_cloudinaryOptions.CloudName,
+				_cloudinaryOptions.ApiKey,
+				_cloudinaryOptions.ApiSecret
+			);
+			_cloudinary = new Cloudinary(account);
 		}
 
 		public async Task<ApiResponse<UserProfileResponse>> GetByUserId(string userId) {
@@ -36,12 +49,7 @@ namespace ApplicationLayer.Services {
 
 				var result = _mapper.Map<UserProfileResponse>(userProfile);
 
-				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
-				if (result.Avatar != null) {
-					result.Avatar = $"{baseUrl}/{result.Avatar}";
-				}
-
-				return new ApiResponse<UserProfileResponse>(result, true, "");
+				return new ApiResponse<UserProfileResponse>(result, true, "Retrieve user profile successfully");
 			} catch (Exception ex) {
 				return new ApiResponse<UserProfileResponse>(false, $"Internal server error occurred: {ex.Message}");
 			}
@@ -57,6 +65,7 @@ namespace ApplicationLayer.Services {
 				var checkUserProfile = await _unitOfWork.UserProfile.GetAsync(x => x.UserId == request.UserId);
 				var result = new UserProfileResponse();
 
+				// Create new User profile
 				if (checkUserProfile == null) {
 					var newUserProfile = new UserProfile {
 						Id = Guid.NewGuid(),
@@ -71,24 +80,26 @@ namespace ApplicationLayer.Services {
 						BankBranch = "",
 						BankNumber = "",
 					};
+					// Handle upload image
 					var file = request.File;
-					var folderName = Path.Combine("Resources", "Images");
-					var pathToSave = Path.Combine(Directory.GetCurrentDirectory(), folderName);
 					if (file is not null) {
-						var fileName = ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName!.Trim('"'); // Content-Disposition
-						var fullPath = Path.Combine(pathToSave, fileName);
-						var dbPath = Path.Combine(folderName, fileName).Replace("\\", "/");
-						using (var stream = new FileStream(fullPath, FileMode.Create)) {
-							file.CopyTo(stream);
+						var uploadResult = new ImageUploadResult();
+						using (var stream = file.OpenReadStream()) {
+							var uploadParam = new ImageUploadParams() {
+								File = new FileDescription(file.Name, stream),
+								Folder = $"{_cloudinaryOptions.Folder}/User"
+							};
+							uploadResult = await _cloudinary.UploadAsync(uploadParam);
 						}
 
-						newUserProfile.Avatar = dbPath;
+						newUserProfile.Avatar = uploadResult.Url.ToString();
+						newUserProfile.AvatarPublicId = uploadResult.PublicId;
 					}
 					await _unitOfWork.UserProfile.AddAsync(newUserProfile);
-
-					// return response
 					result = _mapper.Map<UserProfileResponse>(newUserProfile);
-				} else {
+				} 
+				// Update user profile
+				else {
 					checkUserProfile.UserId = request.UserId;
 					checkUserProfile.FirstName = request.FirstName!;
 					checkUserProfile.LastName = request.LastName!;
@@ -98,37 +109,35 @@ namespace ApplicationLayer.Services {
 					checkUserProfile.Address = request.Address!;
 
 					if (request.File != null) {
-						// Handle remove image
-						if (checkUserProfile.Avatar != null) {
-							string imagePath = Path.Combine(Directory.GetCurrentDirectory(), checkUserProfile.Avatar);
-							if (File.Exists(imagePath)) {
-								File.Delete(imagePath);
-							}
+						// Handle remove image fro cloudinary
+						var deletionParam = new DeletionParams(checkUserProfile.AvatarPublicId) {
+							ResourceType = ResourceType.Image,
+						};
+						var deletionResult = await _cloudinary.DestroyAsync(deletionParam);
+						if (deletionResult == null || deletionResult.Result != "ok") { // Delete failed
+							_logger.LogExceptions($"Failed to delete image from Cloudinary with PublicId: {checkUserProfile.AvatarPublicId}");
 						}
 
+						// Upload file
 						var file = request.File;
-						var folderName = Path.Combine("Resources", "Images");
-						var pathToSave = Path.Combine(Directory.GetCurrentDirectory(), folderName);
-
-						var fileName = ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName!.Trim('"'); // Content-Disposition
-						var fullPath = Path.Combine(pathToSave, fileName);
-						var dbPath = Path.Combine(folderName, fileName).Replace("\\", "/");
-						using (var stream = new FileStream(fullPath, FileMode.Create)) {
-							file.CopyTo(stream);
+						if (file is not null) {
+							var uploadResult = new ImageUploadResult();
+							using (var stream = file.OpenReadStream()) {
+								var uploadParam = new ImageUploadParams() {
+									File = new FileDescription(file.Name, stream),
+									Folder = $"{_cloudinaryOptions.Folder}/User"
+								};
+								uploadResult = await _cloudinary.UploadAsync(uploadParam);
+							}
+							checkUserProfile.Avatar = uploadResult.Url.ToString();
+							checkUserProfile.AvatarPublicId = uploadResult.PublicId;
 						}
-
-						checkUserProfile.Avatar = dbPath;
 					}
 
 					await _unitOfWork.UserProfile.UpdateAsync(checkUserProfile);
 					result = _mapper.Map<UserProfileResponse>(checkUserProfile);
 				}
-
 				await _unitOfWork.SaveChangeAsync();
-				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
-				if (result.Avatar != null) {
-					result.Avatar = $"{baseUrl}/{result.Avatar}";
-				}
 
 				return new ApiResponse<UserProfileResponse>(result, true, "Create or update User Profile success");
 			} catch (Exception ex) {
@@ -146,6 +155,7 @@ namespace ApplicationLayer.Services {
 				var checkUserProfile = await _unitOfWork.UserProfile.GetAsync(x => x.UserId == request.UserId);
 				var result = new StaffProfileResponse();
 
+				// Create
 				if (checkUserProfile == null) {
 					var newUserProfile = new UserProfile {
 						Id = Guid.NewGuid(),
@@ -161,23 +171,24 @@ namespace ApplicationLayer.Services {
 						BankNumber = request.BankBranch!,
 					};
 					var file = request.File;
-					var folderName = Path.Combine("Resources", "Images");
-					var pathToSave = Path.Combine(Directory.GetCurrentDirectory(), folderName);
 					if (file is not null) {
-						var fileName = ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName!.Trim('"'); // Content-Disposition
-						var fullPath = Path.Combine(pathToSave, fileName);
-						var dbPath = Path.Combine(folderName, fileName).Replace("\\", "/");
-						using (var stream = new FileStream(fullPath, FileMode.Create)) {
-							file.CopyTo(stream);
+						var uploadResult = new ImageUploadResult();
+						using (var stream = file.OpenReadStream()) {
+							var uploadParam = new ImageUploadParams() {
+								File = new FileDescription(file.Name, stream),
+								Folder = $"{_cloudinaryOptions.Folder}/User"
+							};
+							uploadResult = await _cloudinary.UploadAsync(uploadParam);
 						}
 
-						newUserProfile.Avatar = dbPath;
+						newUserProfile.Avatar = uploadResult.Url.ToString();
+						newUserProfile.AvatarPublicId = uploadResult.PublicId;
 					}
 					await _unitOfWork.UserProfile.AddAsync(newUserProfile);
-
-					// return response
 					result = _mapper.Map<StaffProfileResponse>(newUserProfile);
-				} else {
+				} 
+				// Update
+				else {
 					checkUserProfile.UserId = request.UserId;
 					checkUserProfile.FirstName = request.FirstName!;
 					checkUserProfile.LastName = request.LastName!;
@@ -190,26 +201,29 @@ namespace ApplicationLayer.Services {
 					checkUserProfile.BankBranch = request.BankBranch!;
 
 					if (request.File != null) {
-						// Handle remove image
-						if (checkUserProfile.Avatar != null) {
-							string imagePath = Path.Combine(Directory.GetCurrentDirectory(), checkUserProfile.Avatar);
-							if (File.Exists(imagePath)) {
-								File.Delete(imagePath);
-							}
+						// Handle remove image fro cloudinary
+						var deletionParam = new DeletionParams(checkUserProfile.AvatarPublicId) {
+							ResourceType = ResourceType.Image,
+						};
+						var deletionResult = await _cloudinary.DestroyAsync(deletionParam);
+						if (deletionResult == null || deletionResult.Result != "ok") { // Delete failed
+							_logger.LogExceptions($"Failed to delete image from Cloudinary with PublicId: {checkUserProfile.AvatarPublicId}");
 						}
 
+						// Upload file
 						var file = request.File;
-						var folderName = Path.Combine("Resources", "Images");
-						var pathToSave = Path.Combine(Directory.GetCurrentDirectory(), folderName);
-
-						var fileName = ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName!.Trim('"'); // Content-Disposition
-						var fullPath = Path.Combine(pathToSave, fileName);
-						var dbPath = Path.Combine(folderName, fileName).Replace("\\", "/");
-						using (var stream = new FileStream(fullPath, FileMode.Create)) {
-							file.CopyTo(stream);
+						if (file is not null) {
+							var uploadResult = new ImageUploadResult();
+							using (var stream = file.OpenReadStream()) {
+								var uploadParam = new ImageUploadParams() {
+									File = new FileDescription(file.Name, stream),
+									Folder = $"{_cloudinaryOptions.Folder}/User"
+								};
+								uploadResult = await _cloudinary.UploadAsync(uploadParam);
+							}
+							checkUserProfile.Avatar = uploadResult.Url.ToString();
+							checkUserProfile.AvatarPublicId = uploadResult.PublicId;
 						}
-
-						checkUserProfile.Avatar = dbPath;
 					}
 
 					await _unitOfWork.UserProfile.UpdateAsync(checkUserProfile);
@@ -217,10 +231,6 @@ namespace ApplicationLayer.Services {
 				}
 
 				await _unitOfWork.SaveChangeAsync();
-				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
-				if (result.Avatar != null) {
-					result.Avatar = $"{baseUrl}/{result.Avatar}";
-				}
 
 				return new ApiResponse<StaffProfileResponse>(result, true, "Create or update User Profile success");
 			} catch (Exception ex) {

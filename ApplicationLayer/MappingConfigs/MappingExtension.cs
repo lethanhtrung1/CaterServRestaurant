@@ -46,7 +46,14 @@ namespace ApplicationLayer.MappingConfigs {
 				config.CreateMap<Merchant, MerchantResponse>();
 				config.CreateMap<PaymentDestination, PaymentDestinationResponse>();
 
-				config.CreateMap<ApplicationUser, UserResponse>();
+				config.CreateMap<ApplicationUser, UserResponse>()
+					.ForMember(
+						dest => dest.IsBanned,
+						opt => opt.MapFrom(
+							src => src.LockoutEnd.HasValue && src.LockoutEnd.Value > DateTime.Now
+						)
+					);
+
 				config.CreateMap<UserProfile, UserProfileResponse>();
 				config.CreateMap<UserProfile, StaffProfileResponse>();
 

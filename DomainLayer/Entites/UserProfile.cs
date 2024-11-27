@@ -9,6 +9,7 @@
 		public string PhoneNumber { get; set; }
 		public string Address { get; set; }
 		public string? Avatar { get; set; }
+		public string? AvatarPublicId { get; set; }
 		//public int Point {  get; set; }
 		public string? Bank { get; set; }
 		public string? BankBranch { get; set; }

@@ -4,20 +4,34 @@ using ApplicationLayer.DTOs.Responses.Product;
 using ApplicationLayer.Interfaces;
 using ApplicationLayer.Logging;
 using AutoMapper;
+using CloudinaryDotNet.Actions;
+using CloudinaryDotNet;
 using DomainLayer.Common;
 using DomainLayer.Entites;
-using System.Net.Http.Headers;
+using ApplicationLayer.Options;
+using Microsoft.Extensions.Options;
 
 namespace ApplicationLayer.Services {
 	public class ProductImageService : IProductImageService {
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly ILogException _logger;
 		private readonly IMapper _mapper;
+		private readonly Cloudinary _cloudinary;
+		private readonly CloudinaryOptions _cloudinaryOptions;
 
-		public ProductImageService(IUnitOfWork unitOfWork, ILogException logger, IMapper mapper) {
+		public ProductImageService(IUnitOfWork unitOfWork, ILogException logger, IMapper mapper,
+			 IOptions<CloudinaryOptions> options
+		) {
 			_unitOfWork = unitOfWork;
 			_logger = logger;
 			_mapper = mapper;
+			_cloudinaryOptions = options.Value;
+			Account account = new Account(
+				_cloudinaryOptions.CloudName,
+				_cloudinaryOptions.ApiKey,
+				_cloudinaryOptions.ApiSecret
+			);
+			_cloudinary = new Cloudinary(account);
 		}
 
 		public async Task<ApiResponse<List<ProductImageResponse>>> CreateAsync(CreateProductImageRequest request) {
@@ -34,17 +48,23 @@ namespace ApplicationLayer.Services {
 
 				var productImagesResponse = new List<ProductImageResponse>();
 
-				var folderName = Path.Combine("Resources", "Images");
-				var pathToSave = Path.Combine(Directory.GetCurrentDirectory(), folderName);
 				foreach (var file in request.Files) {
-					var fileName = Guid.NewGuid().ToString() + ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName!.Trim('"'); // Content-Disposition
-					var fullPath = Path.Combine(pathToSave, fileName);
-					var dbPath = Path.Combine(folderName, fileName).Replace("\\", "/");
+					var uploadResult = new ImageUploadResult();
+					if (file != null) {
+						using (var stream = file.OpenReadStream()) {
+							var uploadParam = new ImageUploadParams() {
+								File = new FileDescription(file.Name, stream),
+								Folder = $"{_cloudinaryOptions.Folder}/Product"
+							};
+							uploadResult = await _cloudinary.UploadAsync(uploadParam);
+						}
+					}
 
 					var productImage = new ProductImage {
 						Id = Guid.NewGuid(),
 						ProductId = request.ProductId,
-						ImageUrl = dbPath,
+						ImageUrl = uploadResult.Url.ToString(),
+						PublicId = uploadResult.PublicId,
 					};
 
 					await _unitOfWork.ProductImage.AddAsync(productImage);
@@ -55,7 +75,7 @@ namespace ApplicationLayer.Services {
 
 				await _unitOfWork.SaveChangeAsync();
 
-				return new ApiResponse<List<ProductImageResponse>>(productImagesResponse, true, "");
+				return new ApiResponse<List<ProductImageResponse>>(productImagesResponse, true, "Upload images successfully");
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
 				return new ApiResponse<List<ProductImageResponse>>(false, $"Internal server error occurred: {ex.Message}");
@@ -66,11 +86,13 @@ namespace ApplicationLayer.Services {
 			var productImage = await _unitOfWork.ProductImage.GetAsync(x => x.Id == id);
 			if (productImage == null) return false;
 
-			if (!string.IsNullOrEmpty(productImage.ImageUrl)) {
-				string imagePath = Path.Combine(Directory.GetCurrentDirectory(), productImage.ImageUrl);
-				if (File.Exists(imagePath)) {
-					File.Delete(imagePath);
-				}
+			// Handle delete image from cloudinary
+			var deletionParam = new DeletionParams(productImage.PublicId) {
+				ResourceType = ResourceType.Image,
+			};
+			var deletionResult = await _cloudinary.DestroyAsync(deletionParam);
+			if (deletionResult == null || deletionResult.Result != "ok") { // Delete failed
+				_logger.LogExceptions($"Failed to delete image from Cloudinary with PublicId: {productImage.PublicId}");
 			}
 
 			await _unitOfWork.ProductImage.RemoveAsync(productImage);
@@ -82,11 +104,13 @@ namespace ApplicationLayer.Services {
 			var productImages = await _unitOfWork.ProductImage.GetListAsync(x => x.ProductId == productId);
 			if (productImages == null) return false;
 			foreach (var item in productImages) {
-				if (!string.IsNullOrEmpty(item.ImageUrl)) {
-					string imagePath = Path.Combine(Directory.GetCurrentDirectory(), item.ImageUrl);
-					if (File.Exists(imagePath)) {
-						File.Delete(imagePath);
-					}
+				// Handle delete image from cloudinary
+				var deletionParam = new DeletionParams(item.PublicId) {
+					ResourceType = ResourceType.Image,
+				};
+				var deletionResult = await _cloudinary.DestroyAsync(deletionParam);
+				if (deletionResult == null || deletionResult.Result != "ok") { // Delete failed
+					_logger.LogExceptions($"Failed to delete image from Cloudinary with PublicId: {item.PublicId}");
 				}
 
 				await _unitOfWork.ProductImage.RemoveAsync(item);

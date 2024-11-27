@@ -4,24 +4,34 @@ using ApplicationLayer.DTOs.Responses;
 using ApplicationLayer.DTOs.Responses.Menu;
 using ApplicationLayer.Interfaces;
 using ApplicationLayer.Logging;
+using ApplicationLayer.Options;
 using AutoMapper;
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
 using DomainLayer.Common;
 using DomainLayer.Entites;
-using Microsoft.AspNetCore.Http;
-using System.Net.Http.Headers;
+using Microsoft.Extensions.Options;
 
 namespace ApplicationLayer.Services {
 	public class MenuService : IMenuService {
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly ILogException _logger;
 		private readonly IMapper _mapper;
-		private readonly IHttpContextAccessor _httpContextAccessor;
+		private readonly Cloudinary _cloudinary;
+		private readonly CloudinaryOptions _cloudinaryOptions;
 
-		public MenuService(IUnitOfWork unitOfWork, ILogException logger, IMapper mapper, IHttpContextAccessor httpContextAccessor) {
+		public MenuService(IUnitOfWork unitOfWork, ILogException logger, IMapper mapper,
+			IOptions<CloudinaryOptions> options) {
 			_unitOfWork = unitOfWork;
 			_logger = logger;
 			_mapper = mapper;
-			_httpContextAccessor = httpContextAccessor;
+			_cloudinaryOptions = options.Value;
+			Account account = new Account(
+				_cloudinaryOptions.CloudName,
+				_cloudinaryOptions.ApiKey,
+				_cloudinaryOptions.ApiSecret
+			);
+			_cloudinary = new Cloudinary(account);
 		}
 
 		public async Task<ApiResponse<MenuResponse>> CreateAsync(CreateMenuRequest request) {
@@ -30,29 +40,26 @@ namespace ApplicationLayer.Services {
 
 				// Hanle upload image
 				var file = request.File;
-				var folderName = Path.Combine("Resources", "Images");
-				var pathToSave = Path.Combine(Directory.GetCurrentDirectory(), folderName);
-				if (file is not null) {
-					var fileName = ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName!.Trim('"'); // Content-Disposition
-					var fullPath = Path.Combine(pathToSave, fileName);
-					var dbPath = Path.Combine(folderName, fileName).Replace("\\", "/");
-					using (var stream = new FileStream(fullPath, FileMode.Create)) {
-						file.CopyTo(stream);
+				var uploadResult = new ImageUploadResult();
+				if (file != null) {
+					using (var stream = file.OpenReadStream()) {
+						var uploadParam = new ImageUploadParams() {
+							File = new FileDescription(file.Name, stream),
+							Folder = $"{_cloudinaryOptions.Folder}/Menu"
+						};
+						uploadResult = await _cloudinary.UploadAsync(uploadParam);
 					}
 
-					menuToDb.ImageUrl = dbPath;
+					menuToDb.ImageUrl = uploadResult.Url.ToString();
+					menuToDb.MenuPublicId = uploadResult.PublicId;
 				}
 
 				await _unitOfWork.Menu.AddAsync(menuToDb);
 				await _unitOfWork.SaveChangeAsync();
 
 				var result = _mapper.Map<MenuResponse>(menuToDb);
-				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
-				if (result.ImageUrl != null) {
-					result.ImageUrl = $"{baseUrl}/{result.ImageUrl}";
-				}
 
-				return new ApiResponse<MenuResponse>(result, true, "");
+				return new ApiResponse<MenuResponse>(result, true, "Created successfully");
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
 				return new ApiResponse<MenuResponse>(false, $"Internal server error occurred: {ex.Message}");
@@ -63,16 +70,15 @@ namespace ApplicationLayer.Services {
 			try {
 				var menu = await _unitOfWork.Menu.GetAsync(x => x.Id == id);
 
-				if (menu == null) {
-					return false;
-				}
+				if (menu == null) { return false; }
 
-				// remove image
-				if (menu.ImageUrl != null) {
-					string imagePath = Path.Combine(Directory.GetCurrentDirectory(), menu.ImageUrl);
-					if (File.Exists(imagePath)) {
-						File.Delete(imagePath);
-					}
+				// Handle delete image from cloudinary
+				var deletionParam = new DeletionParams(menu.MenuPublicId) {
+					ResourceType = ResourceType.Image,
+				};
+				var deletionResult = await _cloudinary.DestroyAsync(deletionParam);
+				if (deletionResult == null || deletionResult.Result != "ok") { // Delete failed
+					_logger.LogExceptions($"Failed to delete image from Cloudinary with PublicId: {menu.MenuPublicId}");
 				}
 
 				await _unitOfWork.Menu.RemoveAsync(menu);
@@ -94,12 +100,8 @@ namespace ApplicationLayer.Services {
 				}
 
 				var result = _mapper.Map<MenuResponse>(menu);
-				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
-				if (result.ImageUrl != null) {
-					result.ImageUrl = $"{baseUrl}/{result.ImageUrl}";
-				}
 
-				return new ApiResponse<MenuResponse>(result, true, "");
+				return new ApiResponse<MenuResponse>(result, true, "Retrieve menu successfully");
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
 				return new ApiResponse<MenuResponse>(false, $"Internal server error occurred: {ex.Message}");
@@ -117,16 +119,10 @@ namespace ApplicationLayer.Services {
 
 				int totalRecord = menus.Count();
 				var result = _mapper.Map<List<MenuResponse>>(menuPagedList);
-				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
-				foreach (var item in result) {
-					if (item.ImageUrl != null) {
-						item.ImageUrl = $"{baseUrl}/{item.ImageUrl}";
-					}
-				}
 
 				return new ApiResponse<PagedList<MenuResponse>>
-					(new PagedList<MenuResponse>(result, request.PageNumber, request.PageSize, totalRecord), true, "");
-				
+					(new PagedList<MenuResponse>(result, request.PageNumber, request.PageSize, totalRecord), true, "Retrieve menus successfully");
+
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
 				return new ApiResponse<PagedList<MenuResponse>>(false, $"Internal server error occurred: {ex.Message}");
@@ -142,14 +138,8 @@ namespace ApplicationLayer.Services {
 				}
 
 				var result = _mapper.Map<List<MenuResponse>>(menus);
-				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
-				foreach (var item in result) {
-					if (item.ImageUrl != null) {
-						item.ImageUrl = $"{baseUrl}/{item.ImageUrl}";
-					}
-				}
 
-				return new ApiResponse<List<MenuResponse>>(result, true, "");
+				return new ApiResponse<List<MenuResponse>>(result, true, "Retrieve menus active successfully");
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
 				return new ApiResponse<List<MenuResponse>>(false, $"Internal server error occurred: {ex.Message}");
@@ -171,25 +161,27 @@ namespace ApplicationLayer.Services {
 
 				// Hanle upload image
 				var file = request.File;
-				var folderName = Path.Combine("Resources", "Images");
-				var pathToSave = Path.Combine(Directory.GetCurrentDirectory(), folderName);
 				if (file is not null) {
-					// Handle remove image
-					if (menuFromDb.ImageUrl != null) {
-						string imagePath = Path.Combine(Directory.GetCurrentDirectory(), menuFromDb.ImageUrl);
-						if (File.Exists(imagePath)) {
-							File.Delete(imagePath);
-						}
+					// Handle delete image from cloudinary
+					var deletionParam = new DeletionParams(menuFromDb.MenuPublicId) {
+						ResourceType = ResourceType.Image,
+					};
+					var deletionResult = await _cloudinary.DestroyAsync(deletionParam);
+					if (deletionResult == null || deletionResult.Result != "ok") { // Delete failed
+						_logger.LogExceptions($"Failed to delete image from Cloudinary with PublicId: {menuFromDb.MenuPublicId}");
 					}
 
-					var fileName = ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName!.Trim('"'); // Content-Disposition
-					var fullPath = Path.Combine(pathToSave, fileName);
-					var dbPath = Path.Combine(folderName, fileName).Replace("\\", "/");
-					using (var stream = new FileStream(fullPath, FileMode.Create)) {
-						file.CopyTo(stream);
+					// Upload new image
+					var uploadResult = new ImageUploadResult();
+					using (var stream = file.OpenReadStream()) {
+						var uploadParam = new ImageUploadParams() {
+							File = new FileDescription(file.Name, stream),
+							Folder = $"{_cloudinaryOptions.Folder}/Menu"
+						};
+						uploadResult = await _cloudinary.UploadAsync(uploadParam);
 					}
-
-					menuFromDb.ImageUrl = dbPath;
+					menuFromDb.ImageUrl = uploadResult.Url.ToString();
+					menuFromDb.MenuPublicId = uploadResult.PublicId;
 				}
 
 				// save to db
@@ -197,10 +189,6 @@ namespace ApplicationLayer.Services {
 				await _unitOfWork.SaveChangeAsync();
 
 				var result = _mapper.Map<MenuResponse>(menuFromDb);
-				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
-				if (result.ImageUrl != null) {
-					result.ImageUrl = $"{baseUrl}/{result.ImageUrl}";
-				}
 
 				return new ApiResponse<MenuResponse>(result, true, "");
 			} catch (Exception ex) {

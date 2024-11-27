@@ -26,7 +26,10 @@ namespace ApplicationLayer.Services {
 			try {
 				var user = await _unitOfWork.ApplicationUser.GetAsync(x => x.Id == id);
 				if (user == null) return false;
-				user.LockoutEnabled = true;
+
+				user.LockoutEnd = DateTimeOffset.MaxValue;
+				//user.LockoutEnd = DateTime.MaxValue;
+
 				await _unitOfWork.ApplicationUser.UpdateAsync(user);
 				await _unitOfWork.SaveChangeAsync();
 				return true;
@@ -108,7 +111,9 @@ namespace ApplicationLayer.Services {
 			try {
 				var user = await _unitOfWork.ApplicationUser.GetAsync(x => x.Id == id);
 				if (user == null) return false;
-				user.LockoutEnabled = false;
+
+				user.LockoutEnd = null;
+
 				await _unitOfWork.ApplicationUser.UpdateAsync(user);
 				await _unitOfWork.SaveChangeAsync();
 				return true;

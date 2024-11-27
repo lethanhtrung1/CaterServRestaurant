@@ -4,24 +4,34 @@ using ApplicationLayer.DTOs.Responses;
 using ApplicationLayer.DTOs.Responses.Product;
 using ApplicationLayer.Interfaces;
 using ApplicationLayer.Logging;
+using ApplicationLayer.Options;
 using AutoMapper;
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
 using DomainLayer.Common;
 using DomainLayer.Entites;
-using Microsoft.AspNetCore.Http;
-using System.Net.Http.Headers;
+using Microsoft.Extensions.Options;
 
 namespace ApplicationLayer.Services {
 	public class ProductService : IProductService {
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly ILogException _logger;
 		private readonly IMapper _mapper;
-		private readonly IHttpContextAccessor _httpContextAccessor;
+		private readonly Cloudinary _cloudinary;
+		private readonly CloudinaryOptions _cloudinaryOptions;
 
-		public ProductService(IUnitOfWork unitOfWork, ILogException logger, IMapper mapper, IHttpContextAccessor httpContextAccessor) {
+		public ProductService(IUnitOfWork unitOfWork, ILogException logger, IMapper mapper,
+			IOptions<CloudinaryOptions> options) {
 			_unitOfWork = unitOfWork;
 			_logger = logger;
 			_mapper = mapper;
-			_httpContextAccessor = httpContextAccessor;
+			_cloudinaryOptions = options.Value;
+			Account account = new Account(
+				_cloudinaryOptions.CloudName,
+				_cloudinaryOptions.ApiKey,
+				_cloudinaryOptions.ApiSecret
+			);
+			_cloudinary = new Cloudinary(account);
 		}
 
 		public async Task<ApiResponse<ProductResponse>> CreateAsync(CreateProductRequest request) {
@@ -35,18 +45,19 @@ namespace ApplicationLayer.Services {
 				// Hanle upload image
 				if (request.File != null) {
 					var file = request.File;
-					var folderName = Path.Combine("Resources", "Images");
-					var pathToSave = Path.Combine(Directory.GetCurrentDirectory(), folderName);
-					if (file is not null) {
-						var fileName = Guid.NewGuid().ToString() + ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName!.Trim('"'); // Content-Disposition
-						var fullPath = Path.Combine(pathToSave, fileName);
-						var dbPath = Path.Combine(folderName, fileName).Replace("\\", "/");
-						using (var stream = new FileStream(fullPath, FileMode.Create)) {
-							file.CopyTo(stream);
+					var uploadResult = new ImageUploadResult();
+					if (file != null) {
+						using (var stream = file.OpenReadStream()) {
+							var uploadParam = new ImageUploadParams() {
+								File = new FileDescription(file.Name, stream),
+								Folder = $"{_cloudinaryOptions.Folder}/Product"
+							};
+							uploadResult = await _cloudinary.UploadAsync(uploadParam);
 						}
-
-						productToDb.Thumbnail = dbPath;
 					}
+					// Upload success
+					productToDb.Thumbnail = uploadResult.Url.ToString();
+					productToDb.ThumbnailPublicId = uploadResult.PublicId;
 				}
 
 				await _unitOfWork.Product.AddAsync(productToDb);
@@ -62,11 +73,6 @@ namespace ApplicationLayer.Services {
 				response.MenuDto = productMenu;
 				response.CategoryDto = productCategory;
 
-				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
-				if (!string.IsNullOrEmpty(response.Thumbnail)) {
-					response.Thumbnail = $"{baseUrl}/{response.Thumbnail}";
-				}
-
 				return new ApiResponse<ProductResponse>(response, true, "");
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
@@ -77,15 +83,15 @@ namespace ApplicationLayer.Services {
 		public async Task<bool> DeleteAsync(Guid id) {
 			var product = await _unitOfWork.Product.GetAsync(x => x.Id == id);
 
-			if (product == null) {
-				return false;
-			}
+			if (product == null) { return false; }
 
-			if (!string.IsNullOrEmpty(product.Thumbnail)) {
-				string imagePath = Path.Combine(Directory.GetCurrentDirectory(), product.Thumbnail);
-				if (File.Exists(imagePath)) {
-					File.Delete(imagePath);
-				}
+			// Handle delete image from cloudinary
+			var deletionParam = new DeletionParams(product.ThumbnailPublicId) {
+				ResourceType = ResourceType.Image,
+			};
+			var deletionResult = await _cloudinary.DestroyAsync(deletionParam);
+			if (deletionResult == null || deletionResult.Result != "ok") { // Delete failed
+				_logger.LogExceptions($"Failed to delete image from Cloudinary with PublicId: {product.ThumbnailPublicId}");
 			}
 
 			await _unitOfWork.Product.RemoveAsync(product);
@@ -127,18 +133,11 @@ namespace ApplicationLayer.Services {
 				int totalRecord = products.Count();
 				var productResponseDto = new List<ProductResponse>();
 
-				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
 				foreach (var item in productsPagedList) {
 					var product = _mapper.Map<ProductResponse>(item);
-					var productMenuDto = _mapper.Map<ProductMenuDto>(item.Menu);
-					var productCategoryDto = _mapper.Map<ProductCategoryDto>(item.Category);
 
-					product.MenuDto = productMenuDto;
-					product.CategoryDto = productCategoryDto;
-
-					if (!string.IsNullOrEmpty(product.Thumbnail)) {
-						product.Thumbnail = $"{baseUrl}/{product.Thumbnail}";
-					}
+					product.MenuDto = _mapper.Map<ProductMenuDto>(item.Menu);
+					product.CategoryDto = _mapper.Map<ProductCategoryDto>(item.Category);
 
 					productResponseDto.Add(product);
 				}
@@ -161,27 +160,15 @@ namespace ApplicationLayer.Services {
 					return new ApiResponse<ProductResponse>(false, $"Product with id: {id} not found");
 				}
 
-				var productImagesDto = _mapper.Map<List<ProductImageDto>>(product.ProductImages);
-				var productMenuDto = _mapper.Map<ProductMenuDto>(product.Menu);
-				var productCategoryDto = _mapper.Map<ProductCategoryDto>(product.Category);
+				//var productImagesDto = _mapper.Map<List<ProductImageDto>>(product.ProductImages);
+				//var productMenuDto = _mapper.Map<ProductMenuDto>(product.Menu);
+				//var productCategoryDto = _mapper.Map<ProductCategoryDto>(product.Category);
+
 				var productDto = _mapper.Map<ProductResponse>(product);
 
-				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
-				if (productImagesDto != null) {
-					foreach (var item in productImagesDto) {
-						if (!string.IsNullOrEmpty(item.ImageUrl)) {
-							item.ImageUrl = $"{baseUrl}/{item.ImageUrl}";
-						}
-					}
-				}
-
-				productDto.ProductImagesDto = productImagesDto;
-				productDto.CategoryDto = productCategoryDto;
-				productDto.MenuDto = productMenuDto;
-
-				if (!string.IsNullOrEmpty(productDto.Thumbnail)) {
-					productDto.Thumbnail = $"{baseUrl}/{productDto.Thumbnail}";
-				}
+				productDto.ProductImagesDto = _mapper.Map<List<ProductImageDto>>(product.ProductImages);
+				productDto.CategoryDto = _mapper.Map<ProductCategoryDto>(product.Category);
+				productDto.MenuDto = _mapper.Map<ProductMenuDto>(product.Menu);
 
 				return new ApiResponse<ProductResponse>(productDto, true, "");
 			} catch (Exception ex) {
@@ -202,18 +189,13 @@ namespace ApplicationLayer.Services {
 				int totalRecord = products.Count();
 				var productResponseDto = new List<ProductResponse>();
 
-				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
 				foreach (var item in productsPagedList) {
 					var product = _mapper.Map<ProductResponse>(item);
-					var productMenuDto = _mapper.Map<ProductMenuDto>(item.Menu);
-					var productCategoryDto = _mapper.Map<ProductCategoryDto>(item.Category);
+					//var productMenuDto = _mapper.Map<ProductMenuDto>(item.Menu);
+					//var productCategoryDto = _mapper.Map<ProductCategoryDto>(item.Category);
 
-					product.MenuDto = productMenuDto;
-					product.CategoryDto = productCategoryDto;
-
-					if (!string.IsNullOrEmpty(product.Thumbnail)) {
-						product.Thumbnail = $"{baseUrl}/{product.Thumbnail}";
-					}
+					product.MenuDto = _mapper.Map<ProductMenuDto>(item.Menu);
+					product.CategoryDto = _mapper.Map<ProductCategoryDto>(item.Category);
 
 					productResponseDto.Add(product);
 				}
@@ -243,27 +225,28 @@ namespace ApplicationLayer.Services {
 
 				// Hanle upload new thumbnail
 				if (request.File != null) {
-					// remove old thumbnail
-					if (!string.IsNullOrEmpty(checkProductFromDb.Thumbnail)) {
-						string imagePath = Path.Combine(Directory.GetCurrentDirectory(), checkProductFromDb.Thumbnail);
-						if (File.Exists(imagePath)) {
-							File.Delete(imagePath);
-						}
+					// Handle delete image from cloudinary
+					var deletionParam = new DeletionParams(checkProductFromDb.ThumbnailPublicId) {
+						ResourceType = ResourceType.Image,
+					};
+					var deletionResult = await _cloudinary.DestroyAsync(deletionParam);
+					if (deletionResult == null || deletionResult.Result != "ok") { // Delete failed
+						_logger.LogExceptions($"Failed to delete image from Cloudinary with PublicId: {checkProductFromDb.ThumbnailPublicId}");
 					}
 
 					var file = request.File;
-					var folderName = Path.Combine("Resources", "Images");
-					var pathToSave = Path.Combine(Directory.GetCurrentDirectory(), folderName);
-					if (file is not null) {
-						var fileName = Guid.NewGuid().ToString() + ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName!.Trim('"'); // Content-Disposition
-						var fullPath = Path.Combine(pathToSave, fileName);
-						var dbPath = Path.Combine(folderName, fileName).Replace("\\", "/");
-						using (var stream = new FileStream(fullPath, FileMode.Create)) {
-							file.CopyTo(stream);
+					var uploadResult = new ImageUploadResult();
+					if (file != null) {
+						using (var stream = file.OpenReadStream()) {
+							var uploadParam = new ImageUploadParams() {
+								File = new FileDescription(file.Name, stream),
+								Folder = $"{_cloudinaryOptions.Folder}/Product"
+							};
+							uploadResult = await _cloudinary.UploadAsync(uploadParam);
 						}
-
-						checkProductFromDb.Thumbnail = dbPath;
 					}
+					checkProductFromDb.Thumbnail = uploadResult.Url.ToString();
+					checkProductFromDb.ThumbnailPublicId = uploadResult.PublicId;
 				}
 
 				await _unitOfWork.Product.UpdateAsync(checkProductFromDb);
@@ -272,17 +255,9 @@ namespace ApplicationLayer.Services {
 				var menu = await _unitOfWork.Menu.GetAsync(x => x.Id == checkProductFromDb.MenuId);
 				var category = await _unitOfWork.Category.GetAsync(x => x.Id == checkProductFromDb.CategoryId);
 
-				var productMenu = _mapper.Map<ProductMenuDto>(menu);
-				var productCategory = _mapper.Map<ProductCategoryDto>(category);
-
 				var response = _mapper.Map<ProductResponse>(checkProductFromDb);
-				response.MenuDto = productMenu;
-				response.CategoryDto = productCategory;
-
-				var baseUrl = $"{_httpContextAccessor.HttpContext.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}";
-				if (!string.IsNullOrEmpty(response.Thumbnail)) {
-					response.Thumbnail = $"{baseUrl}/{response.Thumbnail}";
-				}
+				response.MenuDto = _mapper.Map<ProductMenuDto>(menu);
+				response.CategoryDto = _mapper.Map<ProductCategoryDto>(category);
 
 				return new ApiResponse<ProductResponse>(response, true, "Updated successfully");
 			} catch (Exception ex) {

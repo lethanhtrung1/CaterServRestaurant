@@ -66,5 +66,42 @@ namespace WebAPI.Controllers {
 			await _tokenService.RevokeRefreshToken(request.UserId, request.RefreshToken);
 			return NoContent();
 		}
+
+		[Authorize]
+		[HttpPost("change-password")]
+		public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request) {
+			var result = await _authService.ChangePassword(request);
+			if (result == null || !result.IsSuccess) {
+				return BadRequest(result);
+			}
+			return Ok(result);
+		}
+
+		[HttpPost("forgot-password")]
+		public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request) {
+			var result = await _authService.ForgotPassword(request);
+			if (result == null || !result.IsSuccess) {
+				return BadRequest(result);
+			}
+			return Ok(result);
+		}
+
+		[HttpPost("reset-password")]
+		public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request) {
+			var result = await _authService.ResetPassword(request);
+			if (result == null || !result.IsSuccess) {
+				return BadRequest(result);
+			}
+			return Ok(result);
+		}
+
+		//[HttpPost("Verify-email")]
+		//public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request) {
+		//	var result = await _authService.VerifyEmail(request);
+		//	if (result == null || !result.IsSuccess) {
+		//		return BadRequest(result);
+		//	}
+		//	return Ok(result);
+		//}
 	}
 }
