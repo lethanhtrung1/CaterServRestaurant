@@ -327,11 +327,6 @@ namespace ApplicationLayer.Services {
 					item.Price = productDetail.Price * item.Quantity;
 					var productDto = _mapper.Map<MealProductDetailDto>(productDetail);
 
-					// if thumbnail is not null -> return full path
-					if (!string.IsNullOrEmpty(productDto.Thumbnail)) {
-						productDto.Thumbnail = Path.Combine(Directory.GetCurrentDirectory(), productDto.Thumbnail);
-					}
-
 					var mealProductDto = _mapper.Map<MealProductResponse>(item);
 					mealProductDto.ProductDetail = productDto;
 
