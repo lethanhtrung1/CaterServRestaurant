@@ -25,7 +25,7 @@ namespace InfrastructrureLayer.Repositories {
 
 		public async Task<ApplicationUser> GetAsync(Expression<Func<ApplicationUser, bool>> predicate) {
 			IQueryable<ApplicationUser> query = _dbSet.Where(predicate);
-			return await query.FirstAsync();
+			return await query.FirstOrDefaultAsync();
 		}
 
 		public async Task<ApplicationUser> GetAsync(Expression<Func<ApplicationUser, bool>> predicate, string? includeProperties = null, bool tracked = false) {
@@ -36,7 +36,7 @@ namespace InfrastructrureLayer.Repositories {
 					query = query.Include(property);
 				}
 			}
-			return await query.FirstAsync();
+			return await query.FirstOrDefaultAsync();
 		}
 
 		public async Task<IEnumerable<ApplicationUser>> GetListAsync(Expression<Func<ApplicationUser, bool>>? predicate = null, string? includeProperties = null) {
