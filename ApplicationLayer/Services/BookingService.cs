@@ -88,6 +88,8 @@ namespace ApplicationLayer.Services {
 		public async Task<ApiResponse<BookingResponse>> CreateForStaffAsync(CreateBookingRequest request) {
 			try {
 				var bookingToDb = _mapper.Map<Booking>(request);
+				bookingToDb.BookingDate = DateTime.Now;
+				bookingToDb.Status = BookingStatus.Accept;
 				var customer = await _unitOfWork.ApplicationUser.GetAsync(x => x.UserName == request.CustomerName);
 				if (!string.IsNullOrEmpty(customer?.Id)) {
 					bookingToDb.CustomerId = customer?.Id;
