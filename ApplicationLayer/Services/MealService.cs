@@ -27,8 +27,8 @@ namespace ApplicationLayer.Services {
 					throw new CustomDomainException("Invalid Customer");
 				}
 				await _unitOfWork.Meal.BeginTransactionAsync();
-				//var checkMeal = await _unitOfWork.ApplicationUser.GetAsync(x => x.Id == customerId, includeProperties: "Meal");
 				var checkMeal = await _unitOfWork.Meal.GetAsync(x => x.CustomerId == customerId);
+
 				var response = new MealResponse();
 				decimal totalAmount = 0;
 
@@ -38,67 +38,70 @@ namespace ApplicationLayer.Services {
 						Id = Guid.NewGuid(), CustomerId = customerId,
 						TotalPrice = 0, CreatedDate = DateTime.UtcNow,
 					};
-
 					await _unitOfWork.Meal.AddAsync(newMeal);
 
+					var product = await _unitOfWork.Product.GetAsync(x => x.Id == request.ProductId);
 					// new mealProduct
 					var mealProduct = new MealProduct {
 						Id = Guid.NewGuid(),
 						MealId = newMeal.Id,
 						ProductId = request.ProductId,
 						Quantity = request.Quantity,
+						Price = request.Quantity * product.SellingPrice
 					};
-					var product = await _unitOfWork.Product.GetAsync(x => x.Id == request.ProductId);
-					mealProduct.Price = mealProduct.Quantity * product.Price;
-					totalAmount += mealProduct.Price;
+					newMeal.TotalPrice += mealProduct.Price;
 
 					await _unitOfWork.MealProduct.AddAsync(mealProduct);
-
-					newMeal.TotalPrice = totalAmount;
 					await _unitOfWork.Meal.UpdateAsync(newMeal);
 
 					// response
 					response = _mapper.Map<MealResponse>(newMeal);
+
 					var mealProductDetailResponse = _mapper.Map<MealProductDetailDto>(product);
 
-					var mealProductReponse = new MealProductResponse {
-						Id = mealProduct.Id,
-						ProductDetail = mealProductDetailResponse,
-						Quantity = mealProduct.Quantity,
-						Price = mealProduct.Price,
+					var mealProductListResponse = new List<MealProductResponse>() {
+						new MealProductResponse {
+							Id = mealProduct.Id,
+							ProductDetail = mealProductDetailResponse,
+							Quantity = mealProduct.Quantity,
+							Price = mealProduct.Price,
+						}
 					};
-					var mealProductListResponse = new List<MealProductResponse>();
-					mealProductListResponse.Add(mealProductReponse);
 					response.Products = _mapper.Map<List<MealProductResponse>>(mealProductListResponse);
 				}
 				// meal already exists -> only add new meal product
 				else {
-					var checkMealProduct = await _unitOfWork.MealProduct.GetAsync(x => x.MealId == checkMeal.Id && x.ProductId == request.ProductId);
+					var checkMealProduct = await _unitOfWork.MealProduct
+						.GetAsync(x => x.MealId == checkMeal.Id && x.ProductId == request.ProductId);
 
 					// Add new MealProduct
 					if (checkMealProduct == null) {
+						var product = await _unitOfWork.Product.GetAsync(x => x.Id == request.ProductId);
+
 						var mealProduct = new MealProduct {
 							Id = Guid.NewGuid(),
 							MealId = checkMeal.Id,
 							ProductId = request.ProductId,
 							Quantity = request.Quantity,
+							Price = request.Quantity * product.SellingPrice
 						};
-						var product = await _unitOfWork.Product.GetAsync(x => x.Id == request.ProductId);
-						mealProduct.Price = mealProduct.Quantity * product.Price;
-						totalAmount += mealProduct.Price;
 						await _unitOfWork.MealProduct.AddAsync(mealProduct);
+						totalAmount += mealProduct.Price;
 					}
 					// Meal product already exists in Meal -> Update quantity MealProduct
 					else {
+						var product = await _unitOfWork.Product.GetAsync(x => x.Id == request.ProductId);
+
 						checkMealProduct.Quantity += request.Quantity;
-						checkMealProduct.Price = checkMealProduct.Quantity * checkMealProduct.Price;
-						totalAmount += checkMealProduct.Price;
+						checkMealProduct.Price = checkMealProduct.Quantity * product.SellingPrice;
 						await _unitOfWork.MealProduct.UpdateAsync(checkMealProduct);
+
+						totalAmount += checkMealProduct.Price;
 					}
 
 					// Update Meal.TotalPrice
 					var meal = await _unitOfWork.Meal.GetAsync(x => x.Id == checkMeal.Id);
-					meal.TotalPrice = totalAmount;
+					meal.TotalPrice += totalAmount;
 					await _unitOfWork.Meal.UpdateAsync(meal);
 
 					// return response
@@ -107,15 +110,13 @@ namespace ApplicationLayer.Services {
 
 					// Get List meal product
 					var listMealProduct = await _unitOfWork.MealProduct.GetListAsync(x => x.MealId == checkMeal.Id);
-
 					// Mapp response MealProduct
 					foreach (var item in listMealProduct) {
 						var productDetail = await _unitOfWork.Product.GetAsync(x => x.Id == item.ProductId);
-						item.Price = productDetail.Price * item.Quantity;
-						var productDto = _mapper.Map<MealProductDetailDto>(productDetail);
+						item.Price = productDetail.SellingPrice * item.Quantity;
 
 						var mealProductDto = _mapper.Map<MealProductResponse>(item);
-						mealProductDto.ProductDetail = productDto;
+						mealProductDto.ProductDetail = _mapper.Map<MealProductDetailDto>(productDetail);
 
 						response.Products.Add(mealProductDto);
 					}
@@ -162,11 +163,10 @@ namespace ApplicationLayer.Services {
 
 				foreach (var item in mealProducts) {
 					var productDetail = await _unitOfWork.Product.GetAsync(x => x.Id == item.ProductId);
-					item.Price = productDetail.Price * item.Quantity;
-					var productDto = _mapper.Map<MealProductDetailDto>(productDetail);
+					item.Price = productDetail.SellingPrice * item.Quantity;
 
 					var mealProductDto = _mapper.Map<MealProductResponse>(item);
-					mealProductDto.ProductDetail = productDto;
+					mealProductDto.ProductDetail = _mapper.Map<MealProductDetailDto>(productDetail);
 
 					response.Products.Add(mealProductDto);
 				}
@@ -197,11 +197,10 @@ namespace ApplicationLayer.Services {
 
 				foreach (var item in mealProducts) {
 					var productDetail = await _unitOfWork.Product.GetAsync(x => x.Id == item.ProductId);
-					item.Price = productDetail.Price * item.Quantity;
-					var productDto = _mapper.Map<MealProductDetailDto>(productDetail);
+					item.Price = productDetail.SellingPrice * item.Quantity;
 
 					var mealProductDto = _mapper.Map<MealProductResponse>(item);
-					mealProductDto.ProductDetail = productDto;
+					mealProductDto.ProductDetail = _mapper.Map<MealProductDetailDto>(productDetail);
 
 					response.Products.Add(mealProductDto);
 				}
@@ -215,90 +214,6 @@ namespace ApplicationLayer.Services {
 			}
 		}
 
-		//public async Task<ApiResponse<MealResponse>> AddMealProduct(CreateMealProductRequest request) {
-		//	try {
-		//		var meal = await _unitOfWork.Meal.GetAsync(x => x.Id == request.MealId, includeProperties: "Table,MealProducts");
-		//		if (meal == null) {
-		//			return new ApiResponse<MealResponse>(false, "Meal not found");
-		//		}
-		//		decimal totalAmount = 0;
-
-		//		if (meal.MealProducts.Count() == 0) {
-		//			foreach (var item in request.Products) {
-		//				var mealProduct = new MealProduct {
-		//					Id = Guid.NewGuid(),
-		//					MealId = request.MealId,
-		//					ProductId = item.ProductId,
-		//					Quantity = item.Quantity,
-		//				};
-		//				var product = await _unitOfWork.Product.GetAsync(x => x.Id == item.ProductId);
-		//				mealProduct.Price = mealProduct.Quantity * product.Price;
-		//				totalAmount += mealProduct.Price;
-		//				await _unitOfWork.MealProduct.AddAsync(mealProduct);
-		//			}
-		//		} else {
-		//			foreach (var item in request.Products) {
-		//				var checkMealProduct = await _unitOfWork.MealProduct.GetAsync(x => x.MealId == request.MealId);
-		//				// Check product has been added to the meal -> update quantity
-		//				var mealProductFromDb = await _unitOfWork.MealProduct.GetAsync(x => x.MealId == request.MealId && x.ProductId == item.ProductId);
-		//				if (mealProductFromDb != null) {
-		//					mealProductFromDb.Quantity += item.Quantity;
-		//					mealProductFromDb.Price = mealProductFromDb.Quantity * mealProductFromDb.Price;
-		//					totalAmount += mealProductFromDb.Price;
-		//					await _unitOfWork.MealProduct.UpdateAsync(mealProductFromDb);
-		//				}
-		//				// add new MealProduct
-		//				else {
-		//					var mealProduct = new MealProduct {
-		//						Id = Guid.NewGuid(),
-		//						MealId = request.MealId,
-		//						ProductId = item.ProductId,
-		//						Quantity = item.Quantity,
-		//					};
-		//					var product = await _unitOfWork.Product.GetAsync(x => x.Id == item.ProductId);
-		//					mealProduct.Price = mealProduct.Quantity * product.Price;
-		//					totalAmount += mealProduct.Price;
-		//					await _unitOfWork.MealProduct.AddAsync(mealProduct);
-		//				}
-		//			}
-		//		}
-		//		meal.TotalPrice = totalAmount;
-		//		await _unitOfWork.Meal.UpdateAsync(meal);
-		//		await _unitOfWork.SaveChangeAsync();
-
-		//		// Response
-		//		var response = _mapper.Map<MealResponse>(meal);
-		//		//response.TableId = meal.TableId;
-		//		//response.TableName = meal.Table.Name;
-		//		response.Products = new List<MealProductResponse>();
-
-		//		var mealProducts = await _unitOfWork.MealProduct.GetListAsync(x => x.MealId == meal.Id);
-
-		//		foreach (var item in mealProducts) {
-		//			var productDetail = await _unitOfWork.Product.GetAsync(x => x.Id == item.ProductId);
-		//			item.Price = productDetail.Price * item.Quantity;
-		//			var productDto = _mapper.Map<MealProductDetailDto>(productDetail);
-
-		//			// if thumbnail is not null -> return full path
-		//			if (!string.IsNullOrEmpty(productDto.Thumbnail)) {
-		//				productDto.Thumbnail = Path.Combine(Directory.GetCurrentDirectory(), productDto.Thumbnail);
-		//			}
-
-		//			var mealProductDto = _mapper.Map<MealProductResponse>(item);
-		//			mealProductDto.ProductDetail = productDto;
-
-		//			response.Products.Add(mealProductDto);
-		//		}
-
-		//		response.TotalPrice = response.Products.Select(x => x.Price).Sum();
-
-		//		return new ApiResponse<MealResponse>(response, true, "Add product successfully");
-		//	} catch (Exception ex) {
-
-		//		return new ApiResponse<MealResponse>(false, $"{ex.Message}");
-		//	}
-		//}
-
 		public async Task<ApiResponse<MealResponse>> RemoveMealProduct(RemoveMealProductRequest request) {
 			try {
 				var meal = await _unitOfWork.Meal.GetAsync(x => x.Id == request.MealId);
@@ -311,6 +226,7 @@ namespace ApplicationLayer.Services {
 					return new ApiResponse<MealResponse>(false, "MealProduct not found");
 				}
 
+				meal.TotalPrice -= mealProduct.Price;
 				await _unitOfWork.MealProduct.RemoveAsync(mealProduct);
 				await _unitOfWork.SaveChangeAsync();
 
@@ -324,11 +240,10 @@ namespace ApplicationLayer.Services {
 
 				foreach (var item in mealProducts) {
 					var productDetail = await _unitOfWork.Product.GetAsync(x => x.Id == item.ProductId);
-					item.Price = productDetail.Price * item.Quantity;
-					var productDto = _mapper.Map<MealProductDetailDto>(productDetail);
+					item.Price = productDetail.SellingPrice * item.Quantity;
 
 					var mealProductDto = _mapper.Map<MealProductResponse>(item);
-					mealProductDto.ProductDetail = productDto;
+					mealProductDto.ProductDetail = _mapper.Map<MealProductDetailDto>(productDetail);
 
 					response.Products.Add(mealProductDto);
 				}
@@ -356,14 +271,14 @@ namespace ApplicationLayer.Services {
 				}
 
 				mealProduct.Quantity += 1;
-				mealProduct.Price = mealProduct.Quantity * mealProduct.Product.Price;
+				mealProduct.Price = mealProduct.Quantity * mealProduct.Product.SellingPrice;
+				meal.TotalPrice += mealProduct.Product.SellingPrice;
 				await _unitOfWork.MealProduct.UpdateAsync(mealProduct);
+				await _unitOfWork.Meal.UpdateAsync(meal);
 				await _unitOfWork.SaveChangeAsync();
 
 				// Response
 				var response = _mapper.Map<MealResponse>(meal);
-				//response.TableId = meal.TableId;
-				//response.TableName = meal.Table.Name;
 				response.Products = new List<MealProductResponse>();
 
 				var mealProducts = await _unitOfWork.MealProduct.GetListAsync(x => x.MealId == meal.Id);
@@ -371,11 +286,9 @@ namespace ApplicationLayer.Services {
 				foreach (var item in mealProducts) {
 					var productDetail = await _unitOfWork.Product.GetAsync(x => x.Id == item.ProductId);
 					item.Price = productDetail.Price * item.Quantity;
-					var productDto = _mapper.Map<MealProductDetailDto>(productDetail);
 
 					var mealProductDto = _mapper.Map<MealProductResponse>(item);
-					mealProductDto.ProductDetail = productDto;
-
+					mealProductDto.ProductDetail = _mapper.Map<MealProductDetailDto>(productDetail);
 					response.Products.Add(mealProductDto);
 				}
 
@@ -405,26 +318,25 @@ namespace ApplicationLayer.Services {
 					await _unitOfWork.MealProduct.RemoveAsync(mealProduct);
 				} else {
 					mealProduct.Quantity -= 1;
-					mealProduct.Price = mealProduct.Quantity * mealProduct.Product.Price;
+					mealProduct.Price = mealProduct.Quantity * mealProduct.Product.SellingPrice;
 					await _unitOfWork.MealProduct.UpdateAsync(mealProduct);
 				}
+				meal.TotalPrice -= mealProduct.Product.SellingPrice;
+				await _unitOfWork.Meal.UpdateAsync(meal);
 				await _unitOfWork.SaveChangeAsync();
 
 				// Response
 				var response = _mapper.Map<MealResponse>(meal);
-				//response.TableId = meal.TableId;
-				//response.TableName = meal.Table.Name;
 				response.Products = new List<MealProductResponse>();
 
 				var mealProducts = await _unitOfWork.MealProduct.GetListAsync(x => x.MealId == meal.Id);
 
 				foreach (var item in mealProducts) {
 					var productDetail = await _unitOfWork.Product.GetAsync(x => x.Id == item.ProductId);
-					item.Price = productDetail.Price * item.Quantity;
-					var productDto = _mapper.Map<MealProductDetailDto>(productDetail);
+					item.Price = productDetail.SellingPrice * item.Quantity;
 
 					var mealProductDto = _mapper.Map<MealProductResponse>(item);
-					mealProductDto.ProductDetail = productDto;
+					mealProductDto.ProductDetail = _mapper.Map<MealProductDetailDto>(productDetail);
 
 					response.Products.Add(mealProductDto);
 				}

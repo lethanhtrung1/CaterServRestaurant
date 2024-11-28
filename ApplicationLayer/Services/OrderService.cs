@@ -72,9 +72,9 @@ namespace ApplicationLayer.Services {
 								ProductName = item.Product.Name,
 								OrderId = newOrder.Id,
 								UnitName = item.Product.UnitName!,
-								Price = item.Price,
+								Price = item.Product.SellingPrice,
 								Quantity = item.Quantity,
-								TotalPrice = item.Price * item.Quantity
+								TotalPrice = item.Price
 							};
 							await _unitOfWork.OrderDetail.AddAsync(orderDetai);
 
@@ -89,6 +89,7 @@ namespace ApplicationLayer.Services {
 					}
 					// Update order
 					else {
+						var totalRrderPrice = order.TotalAmount;
 						var response = _mapper.Map<OrderResponse>(order);
 						response.OrderDetails = new List<OrderDetailResponse>();
 
@@ -99,14 +100,17 @@ namespace ApplicationLayer.Services {
 								ProductName = item.Product.Name,
 								OrderId = order.Id,
 								UnitName = item.Product.UnitName!,
-								Price = item.Price,
+								Price = item.Product.SellingPrice,
 								Quantity = item.Quantity,
-								TotalPrice = item.Price * item.Quantity
+								TotalPrice = item.Price
 							};
+							totalRrderPrice += orderDetai.TotalPrice;
 							await _unitOfWork.OrderDetail.AddAsync(orderDetai);
 
 							response.OrderDetails.Add(_mapper.Map<OrderDetailResponse>(orderDetai));
 						}
+						await _unitOfWork.Order.UpdateAsync(order);
+
 						// Remove Meal & MealProduct
 						await _unitOfWork.MealProduct.RemoveRangeAsync(mealProducts);
 						await _unitOfWork.Meal.RemoveAsync(meal);
@@ -142,9 +146,9 @@ namespace ApplicationLayer.Services {
 							ProductName = item.Product.Name,
 							OrderId = newOrder.Id,
 							UnitName = item.Product.UnitName!,
-							Price = item.Price,
+							Price = item.Product.SellingPrice,
 							Quantity = item.Quantity,
-							TotalPrice = item.Price * item.Quantity
+							TotalPrice = item.Price
 						};
 						await _unitOfWork.OrderDetail.AddAsync(orderDetai);
 
@@ -382,8 +386,8 @@ namespace ApplicationLayer.Services {
 					ProductId = product.Id,
 					ProductName = product.Name,
 					Quantity = request.Quantity,
-					Price = product.Price,
-					TotalPrice = request.Quantity * product.Price,
+					Price = product.SellingPrice,
+					TotalPrice = request.Quantity * product.SellingPrice,
 					UnitName = product.UnitName!
 				};
 

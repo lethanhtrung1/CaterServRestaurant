@@ -15,7 +15,7 @@ namespace ApplicationLayer.Vnpay.Requests {
 			vnp_TmnCode = tmnCode;
 			vnp_CreateDate = createDate.ToString("yyyyMMddHHmmss");
 			vnp_IpAddr = ipAddress;
-			vnp_Amount = (int)amount;
+			vnp_Amount = (int)amount * 100;
 			vnp_CurrCode = currCode;
 			vnp_OrderType = orderType;
 			vnp_OrderInfo = orderInfo;
