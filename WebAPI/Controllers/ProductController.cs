@@ -68,5 +68,12 @@ namespace WebAPI.Controllers {
 			var result = await _service.DeleteAsync(id);
 			return Ok(result);
 		}
+
+		[HttpPost("insert-from-excel")]
+		//[Authorize(Roles = $"{Role.ADMIN}")]
+		public async Task<IActionResult> InsertProductFromExcel(IFormFile file) {
+			var result = await _service.BulkInsertFromExcel(file);
+			return result ? Ok(result) : BadRequest(result);
+		}
 	}
 }

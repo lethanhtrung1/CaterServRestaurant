@@ -18,6 +18,10 @@ namespace InfrastructrureLayer.Repositories {
 			await _dbSet.AddAsync(entity);
 		}
 
+		public async Task AddRangeAsync(IEnumerable<ApplicationUser> entities) {
+			await _dbSet.AddRangeAsync(entities);
+		}
+
 		public async Task<bool> AnyAsync(Expression<Func<ApplicationUser, bool>> predicate) {
 			IQueryable<ApplicationUser> query = _dbSet;
 			return await query.AnyAsync(predicate);

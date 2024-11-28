@@ -10,6 +10,8 @@ using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using DomainLayer.Common;
 using DomainLayer.Entites;
+using ExcelDataReader;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 
 namespace ApplicationLayer.Services {
@@ -32,6 +34,83 @@ namespace ApplicationLayer.Services {
 				_cloudinaryOptions.ApiSecret
 			);
 			_cloudinary = new Cloudinary(account);
+		}
+
+		public Task<bool> GetTemplateExcelFile() {
+			throw new NotImplementedException();
+		}
+
+		public async Task<bool> BulkInsertFromExcel(IFormFile file) {
+			try {
+				if (file != null && file.Length > 0) {
+					var uploadsFolder = $"{Directory.GetCurrentDirectory()}\\wwwroot\\Uploads\\";
+
+					if (!Directory.Exists(uploadsFolder)) {
+						Directory.CreateDirectory(uploadsFolder);
+					}
+
+					var filePath = Path.Combine(uploadsFolder, file.FileName);
+
+					using (var stream = new FileStream(filePath, FileMode.Create)) {
+						await file.CopyToAsync(stream);
+					}
+
+					await _unitOfWork.Product.BeginTransactionAsync();
+					var productList = new List<Product>();
+					using (var stream = File.Open(filePath, FileMode.Open, FileAccess.Read)) {
+						using (var reader = ExcelReaderFactory.CreateReader(stream)) {
+							bool isFirstSheet = true;
+							do {
+								// if not first sheet
+								if (!isFirstSheet) break;
+
+								isFirstSheet = false;
+								bool isHeaderSkipped = false;
+
+								while (reader.Read()) {
+									if (!isHeaderSkipped) {
+										isHeaderSkipped = true;
+										continue;
+									}
+									if (string.IsNullOrEmpty(reader.GetValue(0)?.ToString())) { break; }
+
+									var productDto = new Product {
+										Id = Guid.NewGuid(),
+										Code = reader.GetValue(0).ToString()!,
+										Name = reader.GetValue(1).ToString()!,
+										Description = reader.GetValue(2).ToString(),
+										Price = Convert.ToInt32(reader.GetValue(3).ToString()),
+										SellingPrice = Convert.ToInt32(reader.GetValue(4).ToString()),
+										UnitName = reader.GetValue(5).ToString(),
+										Inactive = Convert.ToInt32(reader.GetValue(6).ToString()) == 1 ? true : false,
+										CategoryId = Guid.Parse(reader.GetValue(9).ToString()!),
+										MenuId = Guid.Parse(reader.GetValue(10).ToString()!),
+										//CategoryName = reader.GetValue(7).ToString(),
+										//MenuName = reader.GetValue(8).ToString(),
+										Thumbnail = "https://placehold.co/500x600/png",
+										ThumbnailPublicId = string.Empty,
+									};
+									productList.Add(productDto);
+									//await _unitOfWork.Product.AddAsync(productDto);
+								}
+							} while (reader.NextResult());
+						}
+					}
+					await _unitOfWork.Product.AddRangeAsync(productList);
+					await _unitOfWork.SaveChangeAsync();
+					await _unitOfWork.Product.EndTransactionAsync();
+
+					// remove file
+					if (File.Exists(filePath)) {
+						File.Delete(filePath);
+					}
+					return true;
+				}
+				return false;
+			} catch (Exception ex) {
+				await _unitOfWork.Product.RollBackTransactionAsync();
+				throw new Exception($"{ex.Message}");
+			}
 		}
 
 		public async Task<ApiResponse<ProductResponse>> CreateAsync(CreateProductRequest request) {
