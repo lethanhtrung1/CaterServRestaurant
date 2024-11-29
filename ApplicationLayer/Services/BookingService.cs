@@ -28,6 +28,26 @@ namespace ApplicationLayer.Services {
 			_userManager = userManager;
 		}
 
+		public async Task<ApiResponse<BookingResponse>> CancelBookingAsync(Guid id) {
+			try {
+				var bookingFromDb = await _unitOfWork.Booking.GetAsync(x => x.Id == id);
+
+				if (bookingFromDb is null) {
+					return new ApiResponse<BookingResponse>(false, $"Booking with Id: {id} not exist");
+				}
+
+				bookingFromDb.Status = BookingStatus.Cancel;
+				await _unitOfWork.Booking.UpdateAsync(bookingFromDb);
+				await _unitOfWork.SaveChangeAsync();
+
+				var result = _mapper.Map<BookingResponse>(bookingFromDb);
+				return new ApiResponse<BookingResponse>(result, true, "Cancel booking successfully");
+			} catch (Exception ex) {
+				_logger.LogExceptions(ex);
+				return new ApiResponse<BookingResponse>(false, $"Internal server error occurred: {ex.Message}");
+			}
+		}
+
 		public async Task<ApiResponse<BookingResponse>> ChangeTableAsync(ChangeTableRequest request) {
 			try {
 				var booking = await _unitOfWork.Booking.GetAsync(x => x.Id == request.BookingId);
@@ -132,14 +152,26 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<BookingResponse>> GetAsync(Guid id) {
 			try {
-				var booking = await _unitOfWork.Booking.GetAsync(x => x.Id == id);
+				var booking = await _unitOfWork.Booking.GetAsync(x => x.Id == id, includeProperties: "BookingTables");
 
 				if (booking is null) {
 					return new ApiResponse<BookingResponse>(false, $"Booking with Id: {id} not exist");
 				}
 
 				var result = _mapper.Map<BookingResponse>(booking);
-				return new ApiResponse<BookingResponse>(result, true, "");
+				result.Tables = new List<BookingTableResponse>();
+
+				foreach (var bookingTable in booking.BookingTables) {
+					var table = await _unitOfWork.Table.GetAsync(x => x.Id == bookingTable.TableId);
+					var bookingTableRes = new BookingTableResponse {
+						TableId = bookingTable.TableId,
+						Name = table.Name,
+						AreaName = table.AreaName,
+					};
+					result.Tables.Add(bookingTableRes);
+				}
+
+				return new ApiResponse<BookingResponse>(result, true, "Retrieve booking successfully");
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
 				return new ApiResponse<BookingResponse>(false, $"Internal server error occurred: {ex.Message}");
@@ -148,19 +180,36 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<PagedList<BookingResponse>>> GetListAsync(PagingRequest request) {
 			try {
-				var bookings = await _unitOfWork.Booking.GetListAsync();
+				var bookings = await _unitOfWork.Booking.GetListAsync(includeProperties: "BookingTables");
 				var bookingPagedList = bookings.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize);
 
 				if (bookingPagedList is null || !bookingPagedList.Any()) {
 					return new ApiResponse<PagedList<BookingResponse>>(false, "No record available");
 				}
 
+
 				int totalRecord = bookings.Count();
-				var result = _mapper.Map<List<BookingResponse>>(bookingPagedList);
+				//var result = _mapper.Map<List<BookingResponse>>(bookingPagedList);
+				var result = new List<BookingResponse>();
+				foreach (var booking in bookingPagedList) {
+					var bookingResponse = _mapper.Map<BookingResponse>(booking);
+					bookingResponse.Tables = new List<BookingTableResponse>();
+
+					foreach (var bookingTable in booking.BookingTables) {
+						var table = await _unitOfWork.Table.GetAsync(x => x.Id == bookingTable.TableId);
+						var bookingTableRes = new BookingTableResponse {
+							TableId = bookingTable.TableId,
+							Name = table.Name,
+							AreaName = table.AreaName,
+						};
+						bookingResponse.Tables.Add(bookingTableRes);
+					}
+					result.Add(bookingResponse);
+				}
 
 				return new ApiResponse<PagedList<BookingResponse>>(
 					new PagedList<BookingResponse>(result, request.PageNumber, request.PageSize, totalRecord),
-					true, ""
+					true, "Retrieve bookings successfully"
 				);
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);

@@ -9,5 +9,6 @@
 		public string CustomerId { get; set; }
 		public string CustomerName { get; set; }
 		public string Phone { get; set; }
+		public List<BookingTableResponse>? Tables { get; set; }
 	}
 }

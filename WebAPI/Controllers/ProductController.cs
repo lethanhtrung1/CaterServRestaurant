@@ -75,5 +75,18 @@ namespace WebAPI.Controllers {
 			var result = await _service.BulkInsertFromExcel(file);
 			return result ? Ok(result) : BadRequest(result);
 		}
+
+		[HttpGet("download-template")]
+		//[Authorize(Roles = $"{Role.ADMIN}")]
+		public async Task<IActionResult> DownloadTemplate() {
+			var fileName = "templateInsertProducts.xlsx";
+			var fileBytes = await _service.GetTemplateExcelFile(fileName);
+
+			if (fileBytes == null) {
+				return NotFound("File not found.");
+			}
+
+			return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+		}
 	}
 }

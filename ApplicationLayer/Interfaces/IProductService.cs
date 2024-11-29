@@ -13,6 +13,6 @@ namespace ApplicationLayer.Interfaces {
 		Task<ApiResponse<ProductResponse>> UpdateAsync(UpdateProductRequest request);
 		Task<bool> DeleteAsync(Guid id);
 		Task<bool> BulkInsertFromExcel(IFormFile file);
-		Task<bool> GetTemplateExcelFile();
+		Task<byte[]> GetTemplateExcelFile(string fileName);
 	}
 }

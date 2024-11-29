@@ -96,7 +96,7 @@ namespace InfrastructrureLayer.Authentication {
 		public async Task<TokenResponseDto> RefreshToken(TokenRequestDto token) {
 			try {
 				var principal = GetPrincipalFromExpiredToken(token.AccessToken);
-				var userId = principal.Claims.FirstOrDefault(x => x.Type == "Id")!.Value;
+				var userId = principal.Claims.FirstOrDefault(x => x.Type == ClaimTypes.NameIdentifier)!.Value;
 
 				var refreshToken = await _unitOfWork.RefreshToken
 					.GetAsync(x => x.Token == token.RefreshToken && x.RevokedDate == null && DateTime.UtcNow <= x.ExpiryDate);

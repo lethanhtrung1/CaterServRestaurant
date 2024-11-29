@@ -36,8 +36,14 @@ namespace ApplicationLayer.Services {
 			_cloudinary = new Cloudinary(account);
 		}
 
-		public Task<bool> GetTemplateExcelFile() {
-			throw new NotImplementedException();
+		public async Task<byte[]> GetTemplateExcelFile(string fileName) {
+			//var fileName = "templateInsertProducts.xlsx";
+			var rootPath = $"{Directory.GetCurrentDirectory()}\\wwwroot";
+			var filePath = Path.Combine(rootPath, "Teamplates", fileName);
+
+			if (!File.Exists(filePath)) { return null!; }
+
+			return await File.ReadAllBytesAsync(filePath);
 		}
 
 		public async Task<bool> BulkInsertFromExcel(IFormFile file) {

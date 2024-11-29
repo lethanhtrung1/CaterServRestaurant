@@ -19,6 +19,7 @@ public class Program {
 		builder.Services.AddServiceExtensions(builder.Configuration);
 
 		builder.Services.Configure<VnpayOptions>(builder.Configuration.GetSection(VnpayOptions.ConfigName));
+		builder.Services.Configure<MomoOptions>(builder.Configuration.GetSection(MomoOptions.ConfigName));
 		builder.Services.Configure<CloudinaryOptions>(builder.Configuration.GetSection(CloudinaryOptions.ConfigName));
 
 		builder.Services.AddSignalR();
@@ -51,10 +52,6 @@ public class Program {
 		app.UseHttpsRedirection();
 
 		app.UseStaticFiles();
-		//app.UseStaticFiles(new StaticFileOptions {
-		//	FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), @"Resources")),
-		//	RequestPath = new PathString("/Resources")
-		//});
 
 		app.UseCors("allowSpecificOrigins");
 
@@ -63,8 +60,6 @@ public class Program {
 		app.UseAuthorization();
 
 		SeedDatabase();
-
-		//app.MapHub<DashboardHub>("/dashboard");
 
 		app.MapControllers();
 

@@ -5,6 +5,7 @@ using ApplicationLayer.DTOs.Responses;
 using ApplicationLayer.DTOs.Responses.Payment;
 using ApplicationLayer.Interfaces;
 using ApplicationLayer.Logging;
+using ApplicationLayer.Momo.Requests;
 using ApplicationLayer.Options;
 using ApplicationLayer.Vnpay.Requests;
 using ApplicationLayer.Vnpay.Responses;
@@ -19,14 +20,16 @@ namespace ApplicationLayer.Services {
 		private readonly IMapper _mapper;
 		private readonly ICurrentUserService _currentUserService;
 		private readonly VnpayOptions _vnpayOptions;
+		private readonly MomoOptions _momoOptions;
 		private readonly ILogException _logger;
 
 		public PaymentService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentUserService currentUserService,
-			IOptions<VnpayOptions> vnpayOptions, ILogException logger) {
+			IOptions<VnpayOptions> vnpayOptions, IOptions<MomoOptions> momoOptions, ILogException logger) {
 			_unitOfWork = unitOfWork;
 			_mapper = mapper;
 			_currentUserService = currentUserService;
 			_vnpayOptions = vnpayOptions.Value;
+			_momoOptions = momoOptions.Value;
 			_logger = logger;
 		}
 
@@ -82,6 +85,26 @@ namespace ApplicationLayer.Services {
 
 					case "MOMO":
 						// handle logic momo
+						var momoPaymentRequest = new MomoPaymentRequest(
+							_momoOptions.PartnerCode,
+							newPayment.Id.ToString() ?? string.Empty,
+							(long)request.RequiredAmount!,
+							newPayment.Id.ToString() ?? string.Empty,
+							request.PaymentContent ?? string.Empty,
+							_momoOptions.ReturnUrl,
+							_momoOptions.IpnUrl,
+							"captureWallet",
+							string.Empty
+						);
+
+						momoPaymentRequest.MakeSignature(_momoOptions.AccessKey, _momoOptions.SecretKey);
+
+						(bool createMomoLinkResult, string? createMessage) = momoPaymentRequest.GetLink(_momoOptions.PaymentUrl);
+
+						if (createMomoLinkResult) {
+							paymentUrl = createMessage;
+						}
+
 						break;
 
 					default: break;
@@ -89,7 +112,7 @@ namespace ApplicationLayer.Services {
 
 				var result = new PaymentLinkDto {
 					PaymentId = newPayment.Id,
-					PaymentUrl = paymentUrl
+					PaymentUrl = paymentUrl!
 				};
 
 				return new ApiResponse<PaymentLinkDto>(result, true, "Create payment successfully");
@@ -178,6 +201,83 @@ namespace ApplicationLayer.Services {
 
 							// return url
 							returnUrl = $"{returnUrl}/confirm";
+						}
+						// Payment failed
+						else {
+							resultData.PaymentStatus = "10";
+							resultData.PaymentMessage = "Payment process failed";
+
+							payment!.PaymentStatus = PaymentStatus.Failed;
+
+							// return url
+							returnUrl = $"{returnUrl}/reject";
+						}
+					} else {
+						resultData.PaymentStatus = "11";
+						resultData.PaymentMessage = "Can't find payment";
+
+						payment!.PaymentStatus = PaymentStatus.Failed;
+
+						// return url
+						returnUrl = $"{returnUrl}/reject";
+					}
+
+					await _unitOfWork.Payment.UpdateAsync(payment);
+					await _unitOfWork.SaveChangeAsync();
+					await _unitOfWork.Payment.EndTransactionAsync();
+
+					result.Success = true;
+					result.Message = "Confirm payment successfully";
+					result.Data = (resultData, returnUrl);
+				}
+			} catch (Exception ex) {
+				await _unitOfWork.Payment.RollBackTransactionAsync();
+				result.Success = false;
+				result.Message = ex.Message;
+				result.Data = (null, string.Empty)!;
+			}
+			return result;
+		}
+
+		public async Task<ApiResponse<(PaymentReturnDto, string)>> MomoPaymentReturn(MomoPaymentResultRequest request) {
+			string returnUrl = string.Empty;
+			var result = new ApiResponse<(PaymentReturnDto, string)>();
+
+			await _unitOfWork.Payment.BeginTransactionAsync();
+
+			try {
+				var resultData = new PaymentReturnDto();
+				var isValidSignature = request.IsValidSignature(_momoOptions.AccessKey, _momoOptions.SecretKey);
+
+				if (isValidSignature) {
+					var paymentId = Guid.Parse(request.requestId);
+					var payment = await _unitOfWork.Payment.GetAsync(x => x.Id == paymentId);
+
+					if (payment != null) {
+						var merchant = await _unitOfWork.Merchant.GetAsync(x => x.Id == payment.MerchantId);
+						returnUrl = merchant.MerchantReturnUrl ?? "https://localhost:5173/payment";
+
+						var order = await _unitOfWork.Order.GetAsync(x => x.Id == payment.OrderId);
+						if (order == null || order.OrderStatus == OrderStatus.Completed) {
+							return new ApiResponse<(PaymentReturnDto, string)>(false, "Link payment invalid");
+						}
+
+						// payment success
+						if (request.resultCode == 0) {
+							resultData.PaymentStatus = "00";
+							resultData.PaymentId = paymentId;
+							resultData.PaymentMessage = "Confirm success";
+							resultData.Amount = request.amount;
+							resultData.PaymentDate = DateTimeOffset.FromUnixTimeSeconds(request.responseTime).UtcDateTime;
+
+							payment.PaymentStatus = PaymentStatus.Completed;
+
+							// Update order status
+							order.OrderStatus = OrderStatus.Completed;
+							await _unitOfWork.Order.UpdateAsync(order);
+
+							// return url
+							returnUrl = $"{returnUrl}/confirm";
 						} 
 						// Payment failed
 						else {
@@ -213,6 +313,7 @@ namespace ApplicationLayer.Services {
 				result.Message = ex.Message;
 				result.Data = (null, string.Empty)!;
 			}
+
 			return result;
 		}
 	}
