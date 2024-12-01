@@ -339,15 +339,21 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<OrderResponse>> CreateOrderByBooking(Guid bookingId) {
 			try {
+				var booking = await _unitOfWork.Booking.GetAsync(x => x.Id == bookingId);
+
+				if (booking == null) {
+					return new ApiResponse<OrderResponse>(false, "Booking not found");
+				}
+
 				var order = new Order {
 					Id = Guid.NewGuid(),
 					BookingId = bookingId,
-					CustomerId = null,
+					CustomerId = booking.CustomerId != null ? booking.CustomerId : null,
 					CreatedDate = DateTime.Now,
 					ShippingDate = null,
 					ShippingAddress = string.Empty,
-					CustomerName = string.Empty,
-					CustomerPhone = string.Empty,
+					CustomerName = booking.CustomerName,
+					CustomerPhone = booking.Phone,
 					DeliveryAmount = 0,
 					DepositAmount = 0,
 					DiscountAmount = 0,

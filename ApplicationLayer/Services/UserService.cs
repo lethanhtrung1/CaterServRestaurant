@@ -1,5 +1,4 @@
-﻿using ApplicationLayer.Common.Constants;
-using ApplicationLayer.DTOs.Pagination;
+﻿using ApplicationLayer.DTOs.Pagination;
 using ApplicationLayer.DTOs.Requests.User;
 using ApplicationLayer.DTOs.Responses;
 using ApplicationLayer.DTOs.Responses.User;
@@ -40,6 +39,22 @@ namespace ApplicationLayer.Services {
 			}
 		}
 
+		public async Task<ApiResponse<UserResponse>> ChangeRole(string userId, string roleName) {
+			var user = await _unitOfWork.ApplicationUser.GetAsync(x => x.Id == userId);
+
+			if (user == null) {
+				return new ApiResponse<UserResponse>(false, "user not found");
+			}
+
+			var oleRole = _userManager.GetRolesAsync(user).GetAwaiter().GetResult().FirstOrDefault()!;
+			if (oleRole != roleName) {
+				await _userManager.RemoveFromRoleAsync(user, oleRole);
+				await _userManager.AddToRoleAsync(user, roleName);
+			}
+
+			return new ApiResponse<UserResponse>(true, "Change Role successfully");
+		}
+
 		public async Task<ApiResponse<UserResponse>> CreateUser(CreateUserRequest request) {
 			try {
 				var checkUserExist = await _userManager.FindByEmailAsync(request.Email);
@@ -62,7 +77,7 @@ namespace ApplicationLayer.Services {
 					return new ApiResponse<UserResponse>(false, "Error occured while creating account");
 				}
 
-				var role = await _roleManager.FindByIdAsync(request.RoleId);
+				var role = await _roleManager.FindByNameAsync(request.RoleName);
 
 				if (role == null) {
 					await _unitOfWork.UserProfile.RollBackTransactionAsync();
@@ -108,9 +123,12 @@ namespace ApplicationLayer.Services {
 					return new ApiResponse<UserResponse>(false, $"User with id: {id} not found");
 				}
 
-				var result = _mapper.Map<UserResponse>(user);
+				var role = await _userManager.GetRolesAsync(user);
 
-				return new ApiResponse<UserResponse>(result, true, "");
+				var result = _mapper.Map<UserResponse>(user);
+				result.RoleName = role.FirstOrDefault()!;
+
+				return new ApiResponse<UserResponse>(result, true, "Retrieve user successfully");
 			} catch (Exception ex) {
 				throw new Exception("Error occured while retrieving user", ex);
 			}
@@ -127,11 +145,18 @@ namespace ApplicationLayer.Services {
 				}
 
 				int totalRecord = users.Count();
-				var result = _mapper.Map<List<UserResponse>>(usersPagedList);
+				//var result = _mapper.Map<List<UserResponse>>(usersPagedList);
+				var result = new List<UserResponse>();
+				foreach (var user in users) {
+					var role = await _userManager.GetRolesAsync(user);
+					var userResponse = _mapper.Map<UserResponse>(user);
+					userResponse.UserName = role.FirstOrDefault()!;
+					result.Add(userResponse);
+				}
 
 				return new ApiResponse<PagedList<UserResponse>>(
 					new PagedList<UserResponse>(result, request.PageNumber, request.PageSize, totalRecord),
-					true, ""
+					true, "Retrieve users successfully"
 				);
 			} catch (Exception ex) {
 				throw new Exception("Error occured while retrieving users", ex);

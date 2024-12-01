@@ -78,5 +78,15 @@ namespace WebAPI.Controllers {
 		public async Task<IActionResult> GetRoles() {
 			return Ok(await _userService.GetRoles());
 		}
+
+		[HttpPost("change-role")]
+		[Authorize(Roles = $"{Role.ADMIN}")]
+		public async Task<IActionResult> ChangeRole(string userId, string roleName) {
+			var result = await _userService.ChangeRole(userId, roleName);
+			if (result == null || !result.Success) {
+				return BadRequest(result);
+			}
+			return Ok(result);
+		}
 	}
 }

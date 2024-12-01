@@ -11,5 +11,6 @@ namespace ApplicationLayer.Interfaces {
 		Task<bool> BanUser(string id);
 		Task<bool> UnbanUser(string id);
 		Task<ApiResponse<List<RoleResponse>>> GetRoles();
+		Task<ApiResponse<UserResponse>> ChangeRole(string userId, string roleId); 
 	}
 }
