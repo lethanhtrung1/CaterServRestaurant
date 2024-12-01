@@ -1,9 +1,11 @@
-﻿using ApplicationLayer.DTOs.Requests.Payment;
+﻿using ApplicationLayer.Common.Constants;
+using ApplicationLayer.DTOs.Requests.Payment;
 using ApplicationLayer.DTOs.Responses.Payment;
 using ApplicationLayer.Interfaces;
 using ApplicationLayer.Momo.Requests;
 using ApplicationLayer.Utilities;
 using ApplicationLayer.Vnpay.Responses;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebAPI.Controllers {
@@ -15,6 +17,27 @@ namespace WebAPI.Controllers {
 		public PaymentController(IPaymentService service) {
 			_service = service;
 		}
+
+		[HttpGet("{id:Guid}")]
+		[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
+		public async Task<IActionResult> GetById(Guid id) {
+			var result = await _service.GetPaymentById(id);
+			if (result == null || !result.Success) {
+				return BadRequest(result);
+			}
+			return Ok(result);
+		}
+
+		[HttpGet("paging")]
+		[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
+		public async Task<IActionResult> GetPaging([FromQuery] GetPaymentPagingRequest request) {
+			var result = await _service.GetPaymentPaging(request);
+			if (result == null || !result.Success) {
+				return BadRequest(result);
+			}
+			return Ok(result);
+		}
+
 
 		[HttpPost("payment-url")]
 		public async Task<IActionResult> CreatePaymentUrl([FromBody] CreatePaymentRequest request) {

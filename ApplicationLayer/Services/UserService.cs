@@ -150,7 +150,7 @@ namespace ApplicationLayer.Services {
 				foreach (var user in users) {
 					var role = await _userManager.GetRolesAsync(user);
 					var userResponse = _mapper.Map<UserResponse>(user);
-					userResponse.UserName = role.FirstOrDefault()!;
+					userResponse.RoleName = role.FirstOrDefault()!;
 					result.Add(userResponse);
 				}
 

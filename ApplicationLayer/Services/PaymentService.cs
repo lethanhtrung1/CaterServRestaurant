@@ -1,5 +1,6 @@
 ﻿using ApplicationLayer.Common.Constants;
 using ApplicationLayer.Common.Consumer;
+using ApplicationLayer.DTOs.Pagination;
 using ApplicationLayer.DTOs.Requests.Payment;
 using ApplicationLayer.DTOs.Responses;
 using ApplicationLayer.DTOs.Responses.Payment;
@@ -315,6 +316,59 @@ namespace ApplicationLayer.Services {
 			}
 
 			return result;
+		}
+
+		public async Task<ApiResponse<PagedList<PaymentResponse>>> GetPaymentPaging(GetPaymentPagingRequest request) {
+			try {
+				var payments = await _unitOfWork.Payment.GetListAsync(includeProperties: "PaymentDestination");
+
+				if (request.From != null) {
+					payments = payments.Where(x => x.PaymentDate >= request.From).ToList();
+				}
+
+				if (request.To != null) {
+					payments = payments.Where(x => x.PaymentDate <= request.From).ToList();
+				}
+
+				if (payments == null || !payments.Any()) {
+					return new ApiResponse<PagedList<PaymentResponse>>(false, "No record available");
+				}
+
+				var paymentPaging = payments.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize);
+				int total = payments.Count();
+
+				var result = new List<PaymentResponse>();
+				foreach (var payment in paymentPaging) {
+					var paymentResponse = _mapper.Map<PaymentResponse>(payment);
+					paymentResponse.PaymentDes = payment.PaymentDestination.DesShortName;
+					result.Add(paymentResponse);
+				}
+
+				return new ApiResponse<PagedList<PaymentResponse>>(
+					new PagedList<PaymentResponse>(result, request.PageNumber, request.PageSize, total),
+					true, "Retrieve payments successfully"
+				);
+			} catch (Exception) {
+
+				throw;
+			}
+		}
+
+		public async Task<ApiResponse<PaymentResponse>> GetPaymentById(Guid id) {
+			try {
+				var payment = await _unitOfWork.Payment.GetAsync(x => x.Id == id, includeProperties: "PaymentDestination");
+
+				if (payment == null) {
+					return new ApiResponse<PaymentResponse>(false, "Payment not found");
+				}
+
+				var response = _mapper.Map<PaymentResponse>(payment);
+				response.PaymentDes = payment.PaymentDestination.DesShortName;
+
+				return new ApiResponse<PaymentResponse>(response, true, "Retieve payment successfully");
+			} catch (Exception ex) {
+				return new ApiResponse<PaymentResponse>(false, $"{ex.Message}");
+			}
 		}
 	}
 }
