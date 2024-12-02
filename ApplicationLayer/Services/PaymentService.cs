@@ -191,7 +191,7 @@ namespace ApplicationLayer.Services {
 							resultData.PaymentStatus = "00";
 							resultData.PaymentId = paymentId;
 							resultData.PaymentMessage = "Confirm success";
-							resultData.Amount = request.vnp_Amount;
+							resultData.Amount = request.vnp_Amount / 100;
 							resultData.PaymentDate = DateTime.ParseExact(request.vnp_PayDate, "yyyyMMddHHmmss", System.Globalization.CultureInfo.InvariantCulture);
 
 							payment.PaymentStatus = PaymentStatus.Completed;
