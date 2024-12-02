@@ -99,7 +99,7 @@ namespace WebAPI.Controllers {
 			return Ok(result);
 		}
 
-		[HttpDelete("id:{Guid}")]
+		[HttpDelete("{id:Guid}")]
 		[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
 		public async Task<IActionResult> Delete(Guid id) {
 			var result = await _bookingService.DeleteAsync(id);
