@@ -12,7 +12,6 @@ using ApplicationLayer.DTOs.Responses.Coupon;
 using ApplicationLayer.DTOs.Responses.Meal;
 using ApplicationLayer.DTOs.Responses.Menu;
 using ApplicationLayer.DTOs.Responses.Merchant;
-using ApplicationLayer.DTOs.Responses.Notification;
 using ApplicationLayer.DTOs.Responses.Order;
 using ApplicationLayer.DTOs.Responses.Payment;
 using ApplicationLayer.DTOs.Responses.PaymentDestination;
