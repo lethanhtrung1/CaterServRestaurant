@@ -61,7 +61,6 @@ namespace ApplicationLayer.MappingConfigs {
 				config.CreateMap<UserRole, RoleResponse>();
 
 				config.CreateMap<Review, ReviewResponse>();
-				config.CreateMap<Notification, NotificationDto>();
 				config.CreateMap<Payment, PaymentResponse>();
 
 				#endregion
