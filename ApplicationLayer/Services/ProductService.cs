@@ -310,13 +310,15 @@ namespace ApplicationLayer.Services {
 
 				// Hanle upload new thumbnail
 				if (request.File != null) {
-					// Handle delete image from cloudinary
-					var deletionParam = new DeletionParams(checkProductFromDb.ThumbnailPublicId) {
-						ResourceType = ResourceType.Image,
-					};
-					var deletionResult = await _cloudinary.DestroyAsync(deletionParam);
-					if (deletionResult == null || deletionResult.Result != "ok") { // Delete failed
-						_logger.LogExceptions($"Failed to delete image from Cloudinary with PublicId: {checkProductFromDb.ThumbnailPublicId}");
+					if(!string.IsNullOrEmpty(checkProductFromDb.ThumbnailPublicId)) {
+						// Handle delete image from cloudinary
+						var deletionParam = new DeletionParams(checkProductFromDb.ThumbnailPublicId) {
+							ResourceType = ResourceType.Image,
+						};
+						var deletionResult = await _cloudinary.DestroyAsync(deletionParam);
+						if (deletionResult == null || deletionResult.Result != "ok") { // Delete failed
+							_logger.LogExceptions($"Failed to delete image from Cloudinary with PublicId: {checkProductFromDb.ThumbnailPublicId}");
+						}
 					}
 
 					var file = request.File;
