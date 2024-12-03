@@ -109,7 +109,7 @@ namespace WebAPI.Controllers {
 			return Ok(result);
 		}
 
-		[HttpDelete("cancel/id:{Guid}")]
+		[HttpDelete("cancel/{id:Guid}")]
 		public async Task<IActionResult> CancelBooking(Guid id) {
 			var result = await _bookingService.CancelBookingAsync(id);
 			if (!result.Success) {

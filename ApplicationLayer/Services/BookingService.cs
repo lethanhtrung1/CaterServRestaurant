@@ -110,18 +110,22 @@ namespace ApplicationLayer.Services {
 				var bookingToDb = _mapper.Map<Booking>(request);
 				bookingToDb.BookingDate = DateTime.Now;
 				bookingToDb.Status = BookingStatus.Accept;
+
 				var customer = await _unitOfWork.ApplicationUser.GetAsync(x => x.UserName == request.CustomerName);
 				if (!string.IsNullOrEmpty(customer?.Id)) {
 					bookingToDb.CustomerId = customer?.Id;
 				}
 				await _unitOfWork.Booking.AddAsync(bookingToDb);
-				foreach (var item in request.TableIds) {
-					var bookingTable = new BookingTable {
-						Id = Guid.NewGuid(),
-						TableId = item,
-						BookingId = bookingToDb.Id
-					};
-					await _unitOfWork.BookingTable.AddAsync(bookingTable);
+
+				if (request.TableIds != null) {
+					foreach (var item in request.TableIds) {
+						var bookingTable = new BookingTable {
+							Id = Guid.NewGuid(),
+							TableId = item,
+							BookingId = bookingToDb.Id
+						};
+						await _unitOfWork.BookingTable.AddAsync(bookingTable);
+					}
 				}
 				await _unitOfWork.SaveChangeAsync();
 
@@ -140,11 +144,18 @@ namespace ApplicationLayer.Services {
 					return false;
 				}
 
+				var bookingTables = await _unitOfWork.BookingTable.GetListAsync(x => x.BookingId == booking.Id);
+				await _unitOfWork.Booking.BeginTransactionAsync();
+
+				await _unitOfWork.BookingTable.RemoveRangeAsync(bookingTables);
 				await _unitOfWork.Booking.RemoveAsync(booking);
+
 				await _unitOfWork.SaveChangeAsync();
+				await _unitOfWork.Booking.EndTransactionAsync();
 
 				return true;
 			} catch (Exception ex) {
+				await _unitOfWork.Booking.RollBackTransactionAsync();
 				_logger.LogExceptions(ex);
 				throw new Exception(ex.Message);
 			}
