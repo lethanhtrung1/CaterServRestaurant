@@ -99,17 +99,17 @@ namespace WebAPI.Controllers {
 			return Ok(result);
 		}
 
-		[HttpDelete("{id:Guid}")]
-		[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
-		public async Task<IActionResult> Delete(Guid id) {
-			var result = await _bookingService.DeleteAsync(id);
-			if (!result) {
-				return BadRequest(result);
-			}
-			return Ok(result);
-		}
+		//[HttpDelete("{id:Guid}")]
+		//[Authorize(Roles = $"{Role.ADMIN},{Role.STAFF}")]
+		//public async Task<IActionResult> Delete(Guid id) {
+		//	var result = await _bookingService.DeleteAsync(id);
+		//	if (!result) {
+		//		return BadRequest(result);
+		//	}
+		//	return Ok(result);
+		//}
 
-		[HttpDelete("cancel/{id:Guid}")]
+		[HttpPut("cancel/{id:Guid}")]
 		public async Task<IActionResult> CancelBooking(Guid id) {
 			var result = await _bookingService.CancelBookingAsync(id);
 			if (!result.Success) {

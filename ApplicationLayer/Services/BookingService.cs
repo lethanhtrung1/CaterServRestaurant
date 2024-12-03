@@ -56,8 +56,19 @@ namespace ApplicationLayer.Services {
 					return new ApiResponse<BookingResponse>(false, $"Booking with id: {request.BookingId} not found");
 				}
 
+				await _unitOfWork.Booking.BeginTransactionAsync();
+
 				var bookingTables = await _unitOfWork.BookingTable.GetListAsync(x => x.BookingId == request.BookingId);
+
+				// Remove old table
 				await _unitOfWork.BookingTable.RemoveRangeAsync(bookingTables);
+				foreach (var bookingTable in bookingTables) {
+					var table = await _unitOfWork.Table.GetAsync(x => x.Id == bookingTable.TableId);
+					table.Status = TableStatus.Free;
+					await _unitOfWork.Table.UpdateAsync(table);
+				}
+
+				// add new table to booking table
 				foreach (var item in request.TableIds) {
 					var newBookingTable = new BookingTable {
 						Id = Guid.NewGuid(),
@@ -65,13 +76,20 @@ namespace ApplicationLayer.Services {
 						BookingId = request.BookingId,
 					};
 					await _unitOfWork.BookingTable.AddAsync(newBookingTable);
+
+					// change status table
+					var table = await _unitOfWork.Table.GetAsync(x => x.Id == item);
+					table.Status = TableStatus.Reverved;
+					await _unitOfWork.Table.UpdateAsync(table);
 				}
 
 				await _unitOfWork.SaveChangeAsync();
+				await _unitOfWork.Booking.EndTransactionAsync();
 
 				var result = _mapper.Map<BookingResponse>(booking);
 				return new ApiResponse<BookingResponse>(result, true, "Change table successfully");
 			} catch (Exception ex) {
+				await _unitOfWork.Booking.RollBackTransactionAsync();
 				_logger.LogExceptions(ex);
 				return new ApiResponse<BookingResponse>(false, $"Internal server error occurred: {ex.Message}");
 			}
@@ -87,13 +105,15 @@ namespace ApplicationLayer.Services {
 					bookingToDb.CustomerId = customerId;
 				}
 				await _unitOfWork.Booking.AddAsync(bookingToDb);
-				foreach (var item in request.TableIds) {
-					var bookingTable = new BookingTable {
-						Id = Guid.NewGuid(),
-						TableId = item,
-						BookingId = bookingToDb.Id
-					};
-					await _unitOfWork.BookingTable.AddAsync(bookingTable);
+				if (request.TableIds != null) {
+					foreach (var item in request.TableIds) {
+						var bookingTable = new BookingTable {
+							Id = Guid.NewGuid(),
+							TableId = item,
+							BookingId = bookingToDb.Id
+						};
+						await _unitOfWork.BookingTable.AddAsync(bookingTable);
+					}
 				}
 				await _unitOfWork.SaveChangeAsync();
 
