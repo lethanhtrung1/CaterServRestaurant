@@ -200,6 +200,19 @@ namespace ApplicationLayer.Services {
 							order.OrderStatus = OrderStatus.Completed;
 							await _unitOfWork.Order.UpdateAsync(order);
 
+							if (order.Booking != null) {
+								var booking = await _unitOfWork.Booking.GetAsync(x => x.Id == order.BookingId);
+								booking.Status = BookingStatus.Completed;
+								await _unitOfWork.Booking.UpdateAsync(booking);
+
+								var bookingTables = await _unitOfWork.BookingTable.GetListAsync(x => x.BookingId == booking.Id);
+								foreach ( var bookingTable in bookingTables) {
+									var table = await _unitOfWork.Table.GetAsync(x => x.Id == bookingTable.TableId);
+									table.Status = TableStatus.Free;
+									await _unitOfWork.Table.UpdateAsync(table);
+								}
+							}
+
 							// return url
 							returnUrl = $"{returnUrl}/confirm";
 						}
@@ -277,9 +290,22 @@ namespace ApplicationLayer.Services {
 							order.OrderStatus = OrderStatus.Completed;
 							await _unitOfWork.Order.UpdateAsync(order);
 
+							if (order.Booking != null) {
+								var booking = await _unitOfWork.Booking.GetAsync(x => x.Id == order.BookingId);
+								booking.Status = BookingStatus.Completed;
+								await _unitOfWork.Booking.UpdateAsync(booking);
+
+								var bookingTables = await _unitOfWork.BookingTable.GetListAsync(x => x.BookingId == booking.Id);
+								foreach (var bookingTable in bookingTables) {
+									var table = await _unitOfWork.Table.GetAsync(x => x.Id == bookingTable.TableId);
+									table.Status = TableStatus.Free;
+									await _unitOfWork.Table.UpdateAsync(table);
+								}
+							}
+
 							// return url
 							returnUrl = $"{returnUrl}/confirm";
-						} 
+						}
 						// Payment failed
 						else {
 							resultData.PaymentStatus = "10";

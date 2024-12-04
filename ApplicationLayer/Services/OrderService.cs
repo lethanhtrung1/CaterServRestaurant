@@ -4,13 +4,11 @@ using ApplicationLayer.DTOs.Pagination;
 using ApplicationLayer.DTOs.Requests.Order;
 using ApplicationLayer.DTOs.Responses;
 using ApplicationLayer.DTOs.Responses.Order;
-using ApplicationLayer.Hubs;
 using ApplicationLayer.Interfaces;
 using ApplicationLayer.Logging;
 using AutoMapper;
 using DomainLayer.Common;
 using DomainLayer.Entites;
-using Microsoft.AspNetCore.SignalR;
 
 namespace ApplicationLayer.Services {
 	public class OrderService : IOrderService {
