@@ -4,11 +4,13 @@ using ApplicationLayer.DTOs.Pagination;
 using ApplicationLayer.DTOs.Requests.Order;
 using ApplicationLayer.DTOs.Responses;
 using ApplicationLayer.DTOs.Responses.Order;
+using ApplicationLayer.Hubs;
 using ApplicationLayer.Interfaces;
 using ApplicationLayer.Logging;
 using AutoMapper;
 using DomainLayer.Common;
 using DomainLayer.Entites;
+using Microsoft.AspNetCore.SignalR;
 
 namespace ApplicationLayer.Services {
 	public class OrderService : IOrderService {
@@ -16,13 +18,15 @@ namespace ApplicationLayer.Services {
 		private readonly ICurrentUserService _currentUserService;
 		private readonly IMapper _mapper;
 		private readonly ILogException _logger;
+		private readonly IHubContext<NotificationHub> _hubContext;
 
 		public OrderService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentUserService currentUserService,
-			ILogException logger) {
+			ILogException logger, IHubContext<NotificationHub> hubContext) {
 			_currentUserService = currentUserService;
 			_unitOfWork = unitOfWork;
 			_mapper = mapper;
 			_logger = logger;
+			_hubContext = hubContext;
 		}
 
 		public async Task<ApiResponse<OrderResponse>> CreateOrder(CreateOrderRequest request) {
@@ -368,6 +372,7 @@ namespace ApplicationLayer.Services {
 					BookingId = bookingId,
 					CustomerId = booking.CustomerId != null ? booking.CustomerId : null,
 					CreatedDate = DateTime.Now,
+					LastUpdatedAt = DateTime.Now,
 					ShippingDate = null,
 					ShippingAddress = string.Empty,
 					CustomerName = booking.CustomerName,
@@ -418,6 +423,7 @@ namespace ApplicationLayer.Services {
 
 				await _unitOfWork.OrderDetail.AddAsync(newOrderDetail);
 				checkOrder.TotalAmount += newOrderDetail.TotalPrice;
+				checkOrder.LastUpdatedAt = DateTime.Now;
 				await _unitOfWork.Order.UpdateAsync(checkOrder);
 				await _unitOfWork.SaveChangeAsync();
 
