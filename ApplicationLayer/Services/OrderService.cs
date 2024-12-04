@@ -4,11 +4,13 @@ using ApplicationLayer.DTOs.Pagination;
 using ApplicationLayer.DTOs.Requests.Order;
 using ApplicationLayer.DTOs.Responses;
 using ApplicationLayer.DTOs.Responses.Order;
+using ApplicationLayer.Hubs;
 using ApplicationLayer.Interfaces;
 using ApplicationLayer.Logging;
 using AutoMapper;
 using DomainLayer.Common;
 using DomainLayer.Entites;
+using Microsoft.AspNetCore.SignalR;
 
 namespace ApplicationLayer.Services {
 	public class OrderService : IOrderService {
@@ -16,12 +18,15 @@ namespace ApplicationLayer.Services {
 		private readonly ICurrentUserService _currentUserService;
 		private readonly IMapper _mapper;
 		private readonly ILogException _logger;
+		private readonly IHubContext<NotificationHub> _hubContext;
 
-		public OrderService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentUserService currentUserService, ILogException logger) {
+		public OrderService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentUserService currentUserService,
+			ILogException logger, IHubContext<NotificationHub> hubContext) {
 			_currentUserService = currentUserService;
 			_unitOfWork = unitOfWork;
 			_mapper = mapper;
 			_logger = logger;
+			_hubContext = hubContext;
 		}
 
 		public async Task<ApiResponse<OrderResponse>> CreateOrder(CreateOrderRequest request) {
@@ -50,6 +55,7 @@ namespace ApplicationLayer.Services {
 							OrderType = request.OrderType,
 							OrderStatus = OrderStatus.Pending,
 							CreatedDate = DateTime.Now,
+							LastUpdatedAt = DateTime.Now,
 							ShippingDate = DateTime.Now.AddMinutes(40),
 							CustomerId = customerId,
 							CustomerName = request.CustomerName,
@@ -74,7 +80,8 @@ namespace ApplicationLayer.Services {
 								UnitName = item.Product.UnitName!,
 								Price = item.Product.SellingPrice,
 								Quantity = item.Quantity,
-								TotalPrice = item.Price
+								TotalPrice = item.Price,
+								CreatedAt = DateTime.Now,
 							};
 							await _unitOfWork.OrderDetail.AddAsync(orderDetai);
 
@@ -85,11 +92,13 @@ namespace ApplicationLayer.Services {
 						await _unitOfWork.Meal.RemoveAsync(meal);
 						await _unitOfWork.SaveChangeAsync();
 						await _unitOfWork.Order.EndTransactionAsync();
+
+						response.OrderDetails = response.OrderDetails.OrderByDescending(x => x.CreatedAt).ToList();
 						return new ApiResponse<OrderResponse>(response, true, "Create order successfully");
 					}
 					// Update order
 					else {
-						var totalRrderPrice = order.TotalAmount;
+						var totalOrderPrice = order.TotalAmount;
 						var response = _mapper.Map<OrderResponse>(order);
 						response.OrderDetails = new List<OrderDetailResponse>();
 
@@ -102,13 +111,16 @@ namespace ApplicationLayer.Services {
 								UnitName = item.Product.UnitName!,
 								Price = item.Product.SellingPrice,
 								Quantity = item.Quantity,
-								TotalPrice = item.Price
+								TotalPrice = item.Price,
+								CreatedAt = DateTime.Now,
 							};
-							totalRrderPrice += orderDetai.TotalPrice;
+							totalOrderPrice += orderDetai.TotalPrice;
 							await _unitOfWork.OrderDetail.AddAsync(orderDetai);
 
 							response.OrderDetails.Add(_mapper.Map<OrderDetailResponse>(orderDetai));
 						}
+						order.TotalAmount = totalOrderPrice;
+						order.LastUpdatedAt = DateTime.Now;
 						await _unitOfWork.Order.UpdateAsync(order);
 
 						// Remove Meal & MealProduct
@@ -116,6 +128,8 @@ namespace ApplicationLayer.Services {
 						await _unitOfWork.Meal.RemoveAsync(meal);
 						await _unitOfWork.SaveChangeAsync();
 						await _unitOfWork.Order.EndTransactionAsync();
+
+						response.OrderDetails = response.OrderDetails.OrderByDescending(x => x.CreatedAt).ToList();
 						return new ApiResponse<OrderResponse>(response, true, "Create Order successfully");
 					}
 				}
@@ -126,6 +140,7 @@ namespace ApplicationLayer.Services {
 						OrderType = request.OrderType,
 						OrderStatus = OrderStatus.Pending,
 						CreatedDate = DateTime.Now,
+						LastUpdatedAt = DateTime.Now,
 						ShippingDate = DateTime.Now.AddMinutes(40),
 						CustomerId = customerId,
 						CustomerName = request.CustomerName,
@@ -148,7 +163,8 @@ namespace ApplicationLayer.Services {
 							UnitName = item.Product.UnitName!,
 							Price = item.Product.SellingPrice,
 							Quantity = item.Quantity,
-							TotalPrice = item.Price
+							TotalPrice = item.Price,
+							CreatedAt = DateTime.Now,
 						};
 						await _unitOfWork.OrderDetail.AddAsync(orderDetai);
 
@@ -158,6 +174,8 @@ namespace ApplicationLayer.Services {
 					await _unitOfWork.Meal.RemoveAsync(meal);
 					await _unitOfWork.SaveChangeAsync();
 					await _unitOfWork.Order.EndTransactionAsync();
+
+					response.OrderDetails = response.OrderDetails.OrderByDescending(x => x.CreatedAt).ToList();
 					return new ApiResponse<OrderResponse>(response, true, "Create order successfully");
 				}
 			} catch (Exception ex) {
@@ -204,6 +222,7 @@ namespace ApplicationLayer.Services {
 				else if (response.OrderType == 3) response.OrderTypeName = "Giao hàng";
 				else response.OrderTypeName = "";
 
+				response.OrderDetails = response.OrderDetails.OrderByDescending(x => x.CreatedAt).ToList();
 				return new ApiResponse<OrderResponse>(response, true, "");
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
@@ -229,6 +248,7 @@ namespace ApplicationLayer.Services {
 				else if (response.OrderType == 3) response.OrderTypeName = "Giao hàng";
 				else response.OrderTypeName = "";
 
+				response.OrderDetails = response.OrderDetails.OrderByDescending(x => x.CreatedAt).ToList();
 				return new ApiResponse<OrderResponse>(response, true, "");
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
@@ -256,6 +276,7 @@ namespace ApplicationLayer.Services {
 
 				int totalRecord = orders.Count();
 				var result = _mapper.Map<List<OrderResponse>>(ordersPagedList);
+				result = result.OrderByDescending(x => x.LastUpdatedAt).ToList();
 
 				foreach (var order in result) {
 					if (order.OrderType == 1) order.OrderTypeName = "Phục vụ tại bàn";
@@ -266,7 +287,7 @@ namespace ApplicationLayer.Services {
 
 				return new ApiResponse<PagedList<OrderResponse>>(
 					new PagedList<OrderResponse>(result, request.PageNumber, request.PageSize, totalRecord),
-					true, ""
+					true, "Retrieve orders successfully"
 				);
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
@@ -294,6 +315,7 @@ namespace ApplicationLayer.Services {
 
 				int totalRecord = orders.Count();
 				var result = _mapper.Map<List<OrderResponse>>(ordersPagedList);
+				result = result.OrderByDescending(x => x.LastUpdatedAt).ToList();
 
 				foreach (var order in result) {
 					if (order.OrderType == 1) order.OrderTypeName = "Phục vụ tại bàn";
@@ -304,7 +326,7 @@ namespace ApplicationLayer.Services {
 
 				return new ApiResponse<PagedList<OrderResponse>>(
 					new PagedList<OrderResponse>(result, request.PageNumber, request.PageSize, totalRecord),
-					true, ""
+					true, "Retrieve your orders successfully"
 				);
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
@@ -394,7 +416,8 @@ namespace ApplicationLayer.Services {
 					Quantity = request.Quantity,
 					Price = product.SellingPrice,
 					TotalPrice = request.Quantity * product.SellingPrice,
-					UnitName = product.UnitName!
+					UnitName = product.UnitName!,
+					CreatedAt = DateTime.Now,
 				};
 
 				await _unitOfWork.OrderDetail.AddAsync(newOrderDetail);

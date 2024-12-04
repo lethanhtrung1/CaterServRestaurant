@@ -29,6 +29,8 @@ namespace InfrastructrureLayer.Data {
 		public virtual DbSet<Merchant> Merchants { get; set; }
 		//public virtual DbSet<UserCoupon> UserCoupons { get; set; }
 		public virtual DbSet<Review> Reviews { get; set; }
+		//public virtual DbSet<Notification> Notifications { get; set; }
+		//public virtual DbSet<HubConnection> HubConnections { get; set; }
 
 		#endregion
 
@@ -117,7 +119,12 @@ namespace InfrastructrureLayer.Data {
 				entity.HasOne(d => d.Order)
 					.WithMany(p => p.OrderDetails)
 					.HasForeignKey(d => d.OrderId)
-					.OnDelete(DeleteBehavior.Cascade);
+					.OnDelete(DeleteBehavior.NoAction);
+
+				entity.HasOne(d => d.Product)
+					.WithMany(p => p.OrderDetails)
+					.HasForeignKey(d => d.ProductId)
+					.OnDelete(DeleteBehavior.NoAction);
 			});
 
 			modelBuilder.Entity<Meal>(entity => {
@@ -172,6 +179,12 @@ namespace InfrastructrureLayer.Data {
 					.WithMany(p => p.Reviews)
 					.HasForeignKey(d => d.UserId);
 			});
+
+			//modelBuilder.Entity<Notification>(entity => {
+			//	entity.HasOne(d => d.User)
+			//		.WithMany(p => p.Notifications)
+			//		.HasForeignKey(d => d.UserId);
+			//});
 		}
 	}
 }

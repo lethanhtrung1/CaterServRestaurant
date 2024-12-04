@@ -6,6 +6,7 @@
 		public string? OrderTypeName { get; set; }
 		public string? OrderStatus { get; set; }
 		public DateTime CreatedDate { get; set; }
+		public DateTime LastUpdatedAt { get; set; }
 		public DateTime ShippingDate { get; set; }
 		public string? CustomerId { get; set; }
 		public string? CustomerName { get; set; }

@@ -22,6 +22,7 @@
 		public decimal DepositAmount { get; set; }
 		public decimal DiscountAmount { get; set; }
 		public decimal TotalAmount { get; set; }
+		public DateTime LastUpdatedAt { get; set; }
 
 		public ApplicationUser? Customer { get; set; }
 		public virtual IEnumerable<OrderDetail> OrderDetails { get; set; }

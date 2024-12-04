@@ -37,7 +37,8 @@ namespace InfrastructrureLayer.Data {
 					UserName = "admin@gmail.com",
 					Email = "admin@gmail.com",
 					Name = "Admin",
-					PhoneNumber = "0969905002"
+					PhoneNumber = "0969905002",
+					EmailConfirmed = true,
 				}, "admin123aA@").GetAwaiter().GetResult();
 
 				ApplicationUser user = _userManager.FindByEmailAsync("admin@gmail.com").GetAwaiter().GetResult()!;

@@ -24,8 +24,8 @@ namespace ApplicationLayer.Services {
 				}
 
 				var result = _mapper.Map<List<OrderDetailResponse>>(orderDetails);
-
-				return new ApiResponse<List<OrderDetailResponse>>(result, true, "");
+				result = result.OrderByDescending(x => x.CreatedAt).ToList();
+				return new ApiResponse<List<OrderDetailResponse>>(result, true, "Retrieve order detail successfully");
 			} catch (Exception) {
 
 				return new ApiResponse<List<OrderDetailResponse>>(false, "An error occurred while retrieving order details by order ID");
