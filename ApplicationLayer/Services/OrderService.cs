@@ -4,13 +4,11 @@ using ApplicationLayer.DTOs.Pagination;
 using ApplicationLayer.DTOs.Requests.Order;
 using ApplicationLayer.DTOs.Responses;
 using ApplicationLayer.DTOs.Responses.Order;
-using ApplicationLayer.Hubs;
 using ApplicationLayer.Interfaces;
 using ApplicationLayer.Logging;
 using AutoMapper;
 using DomainLayer.Common;
 using DomainLayer.Entites;
-using Microsoft.AspNetCore.SignalR;
 
 namespace ApplicationLayer.Services {
 	public class OrderService : IOrderService {
@@ -18,15 +16,13 @@ namespace ApplicationLayer.Services {
 		private readonly ICurrentUserService _currentUserService;
 		private readonly IMapper _mapper;
 		private readonly ILogException _logger;
-		private readonly IHubContext<NotificationHub> _hubContext;
 
 		public OrderService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentUserService currentUserService,
-			ILogException logger, IHubContext<NotificationHub> hubContext) {
+			ILogException logger) {
 			_currentUserService = currentUserService;
 			_unitOfWork = unitOfWork;
 			_mapper = mapper;
 			_logger = logger;
-			_hubContext = hubContext;
 		}
 
 		public async Task<ApiResponse<OrderResponse>> CreateOrder(CreateOrderRequest request) {
