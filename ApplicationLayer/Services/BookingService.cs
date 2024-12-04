@@ -238,6 +238,7 @@ namespace ApplicationLayer.Services {
 					result.Add(bookingResponse);
 				}
 
+				result = result.OrderByDescending(x => x.BookingDate).ToList();
 				return new ApiResponse<PagedList<BookingResponse>>(
 					new PagedList<BookingResponse>(result, request.PageNumber, request.PageSize, totalRecord),
 					true, "Retrieve bookings successfully"

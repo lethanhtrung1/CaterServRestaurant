@@ -18,15 +18,13 @@ namespace ApplicationLayer.Services {
 		private readonly ICurrentUserService _currentUserService;
 		private readonly IMapper _mapper;
 		private readonly ILogException _logger;
-		private readonly IHubContext<NotificationHub> _hubContext;
 
 		public OrderService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentUserService currentUserService,
-			ILogException logger, IHubContext<NotificationHub> hubContext) {
+			ILogException logger) {
 			_currentUserService = currentUserService;
 			_unitOfWork = unitOfWork;
 			_mapper = mapper;
 			_logger = logger;
-			_hubContext = hubContext;
 		}
 
 		public async Task<ApiResponse<OrderResponse>> CreateOrder(CreateOrderRequest request) {
