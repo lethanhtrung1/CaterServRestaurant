@@ -212,6 +212,7 @@ namespace ApplicationLayer.Services {
 		public async Task<ApiResponse<PagedList<BookingResponse>>> GetListAsync(PagingRequest request) {
 			try {
 				var bookings = await _unitOfWork.Booking.GetListAsync(includeProperties: "BookingTables");
+				bookings = bookings.OrderByDescending(x => x.BookingDate);
 				var bookingPagedList = bookings.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize);
 
 				if (bookingPagedList is null || !bookingPagedList.Any()) {
@@ -238,7 +239,6 @@ namespace ApplicationLayer.Services {
 					result.Add(bookingResponse);
 				}
 
-				result = result.OrderByDescending(x => x.BookingDate).ToList();
 				return new ApiResponse<PagedList<BookingResponse>>(
 					new PagedList<BookingResponse>(result, request.PageNumber, request.PageSize, totalRecord),
 					true, "Retrieve bookings successfully"

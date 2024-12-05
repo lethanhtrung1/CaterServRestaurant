@@ -256,6 +256,8 @@ namespace ApplicationLayer.Services {
 			try {
 				var orders = await _unitOfWork.Order.GetListAsync();
 
+				orders = orders.OrderByDescending(x => x.LastUpdatedAt).ToList();
+
 				if (!string.IsNullOrEmpty(request.OrderStatus)) {
 					orders = orders.Where(x => x.OrderStatus == request.OrderStatus).ToList();
 				}
@@ -272,7 +274,6 @@ namespace ApplicationLayer.Services {
 
 				int totalRecord = orders.Count();
 				var result = _mapper.Map<List<OrderResponse>>(ordersPagedList);
-				result = result.OrderByDescending(x => x.LastUpdatedAt).ToList();
 
 				foreach (var order in result) {
 					if (order.OrderType == 1) order.OrderTypeName = "Phục vụ tại bàn";
