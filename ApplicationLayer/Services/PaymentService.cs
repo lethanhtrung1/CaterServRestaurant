@@ -200,7 +200,7 @@ namespace ApplicationLayer.Services {
 							order.OrderStatus = OrderStatus.Completed;
 							await _unitOfWork.Order.UpdateAsync(order);
 
-							if (order.Booking != null) {
+							if (order.BookingId != null) {
 								var booking = await _unitOfWork.Booking.GetAsync(x => x.Id == order.BookingId);
 								booking.Status = BookingStatus.Completed;
 								await _unitOfWork.Booking.UpdateAsync(booking);
