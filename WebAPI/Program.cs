@@ -1,7 +1,6 @@
 using ApplicationLayer.DependencyInjection;
 using ApplicationLayer.Hubs;
 using ApplicationLayer.Options;
-using Hangfire;
 using InfrastructrureLayer.DependencyInjection;
 using WebAPI.Extensions;
 

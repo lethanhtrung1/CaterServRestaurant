@@ -3,7 +3,6 @@ using ApplicationLayer.Interfaces;
 using ApplicationLayer.MappingConfigs;
 using ApplicationLayer.Services;
 using AutoMapper;
-using Hangfire;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
