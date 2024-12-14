@@ -8,7 +8,8 @@
 		public string? ShippingAddress { get; set; }
 		//public decimal DeliveryAmount { get; set; }
 		//public decimal DepositAmount { get; set; }
-		public decimal DiscountAmount { get; set; }
+		//public decimal DiscountAmount { get; set; }
 		//public decimal TotalAmount { get; set; }
+		public Guid? CouponId { get; set; }
 	}
 }

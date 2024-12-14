@@ -27,10 +27,9 @@ namespace InfrastructrureLayer.Data {
 		public virtual DbSet<PaymentDestination> PaymentDestinations { get; set; }
 		public virtual DbSet<PaymentSignature> PaymentSignatures { get; set; }
 		public virtual DbSet<Merchant> Merchants { get; set; }
-		//public virtual DbSet<UserCoupon> UserCoupons { get; set; }
 		public virtual DbSet<Review> Reviews { get; set; }
+		public virtual DbSet<UserCoupon> UserCoupons { get; set; }
 		//public virtual DbSet<Notification> Notifications { get; set; }
-		//public virtual DbSet<HubConnection> HubConnections { get; set; }
 
 		#endregion
 
@@ -185,6 +184,16 @@ namespace InfrastructrureLayer.Data {
 			//		.WithMany(p => p.Notifications)
 			//		.HasForeignKey(d => d.UserId);
 			//});
+
+			modelBuilder.Entity<UserCoupon>(entity => {
+				entity.HasOne(d => d.Coupon)
+					.WithMany(p => p.UserCoupons)
+					.HasForeignKey(d => d.CouponId);
+
+				entity.HasOne(d => d.User)
+					.WithMany(p => p.UserCoupons)
+					.HasForeignKey(d => d.UserId);
+			});
 		}
 	}
 }

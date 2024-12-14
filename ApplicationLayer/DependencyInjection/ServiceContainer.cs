@@ -3,12 +3,13 @@ using ApplicationLayer.Interfaces;
 using ApplicationLayer.MappingConfigs;
 using ApplicationLayer.Services;
 using AutoMapper;
+using Hangfire;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace ApplicationLayer.DependencyInjection
-{
-    public static class ServiceContainer {
-		public static IServiceCollection AddApplicationService(this IServiceCollection services) {
+namespace ApplicationLayer.DependencyInjection {
+	public static class ServiceContainer {
+		public static IServiceCollection AddApplicationService(this IServiceCollection services, IConfiguration configuration) {
 
 			// Register automapper
 			IMapper mapper = MappingExtension.RegisterMaps().CreateMapper();
@@ -34,6 +35,14 @@ namespace ApplicationLayer.DependencyInjection
 			services.AddScoped<IUserProfileService, UserProfileService>();
 			services.AddScoped<IPaymentService, PaymentService>();
 			services.AddScoped<IReviewService, ReviewService>();
+			services.AddScoped<INotificationService, NotificationService>();
+			services.AddScoped<IDashboardService, DashboardService>();
+			services.AddScoped<IUserCouponService, UserCouponService>();
+
+			//services.AddHangfire(config => {
+			//	config.UseSqlServerStorage(configuration.GetConnectionString("DefaultConnection"));
+			//});
+			//services.AddHangfireServer();
 
 			return services;
 		}

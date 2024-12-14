@@ -1,7 +1,12 @@
 ﻿using ApplicationLayer.DTOs.Requests.Account;
 using ApplicationLayer.Interfaces;
+using DomainLayer.Entites;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace WebAPI.Controllers {
 	[Route("api/[controller]")]
@@ -9,10 +14,12 @@ namespace WebAPI.Controllers {
 	public class AccountController : ControllerBase {
 		private readonly IAuthService _authService;
 		private readonly ITokenService _tokenService;
+		private readonly SignInManager<ApplicationUser> _signInManager;
 
-		public AccountController(IAuthService authService, ITokenService tokenService) {
+		public AccountController(IAuthService authService, ITokenService tokenService, SignInManager<ApplicationUser> signInManager) {
 			_authService = authService;
 			_tokenService = tokenService;
+			_signInManager = signInManager;
 		}
 
 		[HttpPost("login")]
@@ -95,13 +102,52 @@ namespace WebAPI.Controllers {
 			return Ok(result);
 		}
 
-		//[HttpPost("Verify-email")]
-		//public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request) {
-		//	var result = await _authService.VerifyEmail(request);
-		//	if (result == null || !result.IsSuccess) {
-		//		return BadRequest(result);
-		//	}
-		//	return Ok(result);
-		//}
+		[HttpPost("verify-email")]
+		public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request) {
+			var result = await _authService.VerifyEmail(request);
+			if (result == null || !result.IsSuccess) {
+				return BadRequest(result);
+			}
+			return Ok(result);
+		}
+
+		[Authorize]
+		[HttpPost("manage/2fa")]
+		public async Task<IActionResult> ManageTwoFactor(string email) {
+			var result = await _authService.ManageTwoFactor(email);
+			if (result == null || !result.IsSuccess) {
+				return BadRequest(result);
+			}
+			return Ok(result);
+		}
+
+		[HttpGet("signin-google")]
+		public IActionResult SigninWithGoogle() {
+			var redirectUrl = Url.Action("GoogleCallback", "Account", null, Request.Scheme);
+			var properties = _signInManager.ConfigureExternalAuthenticationProperties(GoogleDefaults.AuthenticationScheme, redirectUrl);
+			return Challenge(properties, GoogleDefaults.AuthenticationScheme);
+		}
+
+		[HttpGet("google/callback")]
+		public async Task<IActionResult> GoogleCallback() {
+			var authenticateResult = await HttpContext.AuthenticateAsync(GoogleDefaults.AuthenticationScheme);
+
+			//var principal = authenticateResult.Principal;
+			//var email = authenticateResult.Principal.FindFirstValue(ClaimTypes.Email);
+			//var name = authenticateResult.Principal.FindFirstValue(ClaimTypes.Name);
+			//var providerKey = authenticateResult.Principal.FindFirstValue(ClaimTypes.NameIdentifier);
+			//var provider = authenticateResult.Properties.Items["LoginProvider"];
+
+			//var tokens = authenticateResult.Properties.GetTokens();
+			//return Ok(tokens);
+
+			if (authenticateResult == null || !authenticateResult.Succeeded) {
+				return BadRequest("external authentication error");
+			}
+
+			var response = await _authService.HandleExternalLoginProviderCallBack(authenticateResult);
+
+			return Ok(response);
+		}
 	}
 }

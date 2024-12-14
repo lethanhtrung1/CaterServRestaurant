@@ -26,6 +26,8 @@ namespace InfrastructrureLayer.Common {
 		public IPaymentSignatureRepository PaymentSignature { get; set; }
 		public IApplicationUserRepository ApplicationUser { get; set; }
 		public IReviewRepository Review { get; set; }
+		public INotificationRepository Notification { get; set; }
+		public IUserCouponRepository UserCoupon { get; set; }
 
 		public UnitOfWork(AppDbContext dbContext) {
 			_dbContext = dbContext;
@@ -49,6 +51,8 @@ namespace InfrastructrureLayer.Common {
 			PaymentSignature = new PaymentSignatureRepository(_dbContext);
 			ApplicationUser = new ApplicationUserRepository(_dbContext);
 			Review = new ReviewRepository(_dbContext);
+			Notification = new NotificationRepository(_dbContext);
+			UserCoupon = new UserCouponRepository(_dbContext);
 		}
 
 		public async Task SaveChangeAsync() {

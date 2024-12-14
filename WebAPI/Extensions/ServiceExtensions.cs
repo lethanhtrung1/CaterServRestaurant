@@ -16,12 +16,18 @@ namespace WebAPI.Extensions {
 
 		private static IServiceCollection AuthenticationService(this IServiceCollection services, IConfiguration configuration) {
 			var jwtOptions = configuration.GetSection(ApplicationConfig.JWT).Get<JwtOptions>();
+			var googleOptions = configuration.GetSection(ApplicationConfig.GOOGLE).Get<GoogleOptions>();
 
 			if (jwtOptions == null) {
-				throw new InvalidOperationException("JWT options are not configured correctly.");
+				throw new InvalidOperationException("JWT options are not configured correctly");
+			}
+
+			if (googleOptions == null) {
+				throw new InvalidOperationException("Google options are not configured correctly");
 			}
 
 			services.AddSingleton(jwtOptions);
+			services.AddSingleton(googleOptions);
 
 			// Add Jwt authentication scheme
 			services.AddAuthentication(options => {
@@ -51,6 +57,10 @@ namespace WebAPI.Extensions {
 						return Task.CompletedTask;
 					}
 				};
+			}).AddGoogle(options => {
+				options.ClientId = googleOptions.ClientId;
+				options.ClientSecret = googleOptions.ClientSecret;
+				//options.SaveTokens = true;
 			});
 
 			return services;
@@ -58,6 +68,7 @@ namespace WebAPI.Extensions {
 
 		private static IServiceCollection AddSwaggerUI(this IServiceCollection services) {
 			services.AddSwaggerGen(options => {
+				options.SwaggerDoc("v1", new OpenApiInfo { Title = "Restaurant Management", Version = "v1" });
 				options.AddSecurityDefinition(name: JwtBearerDefaults.AuthenticationScheme, securityScheme: new OpenApiSecurityScheme {
 					Name = "Authorization",
 					Description = "Enter the Bear Authorization string as following: `Bearer Generate-JWT-Token`",

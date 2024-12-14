@@ -6,7 +6,9 @@ using ApplicationLayer.DTOs.Responses.Account;
 using ApplicationLayer.Interfaces;
 using ApplicationLayer.Logging;
 using DomainLayer.Entites;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
 
 namespace InfrastructrureLayer.Authentication {
 	public class AuthService : IAuthService {
@@ -31,6 +33,11 @@ namespace InfrastructrureLayer.Authentication {
 					return new AuthResponseDto(false, "Your email or password is incorrect, please try again");
 				}
 
+				// Check email is confirmed
+				if (!await _userManager.IsEmailConfirmedAsync(user)) {
+					return new AuthResponseDto(false, "Email is not confirmed");
+				}
+
 				if (user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTime.UtcNow) {
 					return new AuthResponseDto(false, "Your account is locked");
 				}
@@ -46,13 +53,19 @@ namespace InfrastructrureLayer.Authentication {
 						//var message = new Message(request.Email!, "Locked out account information", content);
 						//_emailSender.SendEmail(message);
 
-						return new AuthResponseDto(false, "Your account is locked due to multiple failed login attempts");
+						return new AuthResponseDto(false, "Your account is locked due to multiple failed login attempts. Please try again in 5 minutes.");
 					}
 					return new AuthResponseDto(false, "Your email or password is incorrect, please try again");
 				}
 
+				// Check 2-FA
+				if (await _userManager.GetTwoFactorEnabledAsync(user)) {
+					// Generate OTP 2FA
+					return await GenerateOTPFor2Factor(user);
+				}
+
 				var jwtToken = await _tokenService.GenerateToken(user, populateExp: true);
-				
+
 				// store refresh token as cookies
 				var tokenDto = new TokenRequestDto {
 					AccessToken = jwtToken.AccessToken,
@@ -116,6 +129,15 @@ namespace InfrastructrureLayer.Authentication {
 				if (!assignRoleResult.Succeeded) {
 					return new AuthResponseDto(false, "Error occured while creating account");
 				}
+
+				// Link the external login to the user
+				var loginInfo = new UserLoginInfo("System", "", "System");
+				await _userManager.AddLoginAsync(newUser, loginInfo);
+
+				// Generate email confirmation code
+				var code = await _userManager.GenerateEmailConfirmationTokenAsync(newUser);
+				var message = new Message(newUser.Email, "Verify email", code);
+				_emailService.SendEmail(message);
 
 				return new AuthResponseDto(true, "Registration successfully");
 			} catch (Exception ex) {
@@ -211,6 +233,142 @@ namespace InfrastructrureLayer.Authentication {
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
 				return new GeneralResponse(false, $"An unexpected error occurred. Please try again later.");
+			}
+		}
+
+		public async Task<AuthResponseDto> VerifyTwoFactor(string email, string code) {
+			var user = await _userManager.FindByEmailAsync(email);
+
+			if (user is null) {
+				return new AuthResponseDto(false, "Request failed. Please verify your credentials");
+			}
+
+			var providers = _userManager.GetValidTwoFactorProvidersAsync(user).GetAwaiter().GetResult().FirstOrDefault()!;
+
+			var isConfirm = await _userManager.VerifyTwoFactorTokenAsync(user, providers, code);
+			if (!isConfirm) {
+				return new AuthResponseDto(false, "Login failed. Please verify your credentials");
+			}
+
+			var jwtToken = await _tokenService.GenerateToken(user, populateExp: true);
+
+			// store refresh token as cookies
+			var tokenDto = new TokenRequestDto {
+				AccessToken = jwtToken.AccessToken,
+				RefreshToken = jwtToken.RefreshToken,
+			};
+			// Set token to inside Cookie
+			_tokenService.SetTokensInsideCookie(tokenDto);
+
+			// Reset access failed
+			await _userManager.ResetAccessFailedCountAsync(user);
+
+			return new AuthResponseDto() {
+				Success = true,
+				Message = "Login successfully",
+				AccessToken = jwtToken.AccessToken,
+				RefreshToken = jwtToken.RefreshToken,
+			};
+		}
+
+		private async Task<AuthResponseDto> GenerateOTPFor2Factor(ApplicationUser user) {
+			var providers = await _userManager.GetValidTwoFactorProvidersAsync(user);
+
+			if (!providers.Contains("Email")) {
+				return new AuthResponseDto() {
+					Success = false,
+					Message = "Invalid 2-Factor Provider"
+				};
+			}
+
+			var token = await _userManager.GenerateTwoFactorTokenAsync(user, "Email");
+			var message = new Message(user.Email!, "Authentication token", token);
+			_emailService.SendEmail(message);
+
+			return new AuthResponseDto {
+				Success = true,
+				Message = "Code has been sent to your email, please check your email."
+			};
+		}
+
+		public async Task<GeneralResponse> ManageTwoFactor(string email) {
+			var user = await _userManager.FindByEmailAsync(email);
+			if (user is null) {
+				return new GeneralResponse(false, "Invalid request");
+			}
+
+			bool isTwoFactorEnabled = user.TwoFactorEnabled;
+
+			await _userManager.SetTwoFactorEnabledAsync(user, !isTwoFactorEnabled);
+
+			return new GeneralResponse(true, "Change two factor successfully");
+		}
+
+		public async Task<AuthResponseDto> HandleExternalLoginProviderCallBack(AuthenticateResult authenticateResult) {
+			try {
+				if (authenticateResult?.Principal == null) {
+					throw new ArgumentException(nameof(authenticateResult.Principal), "Principal cannot be null");
+				}
+
+				var principal = authenticateResult.Principal;
+				var email = authenticateResult.Principal.FindFirstValue(ClaimTypes.Email);
+				var name = authenticateResult.Principal.FindFirstValue(ClaimTypes.Name);
+				var providerKey = authenticateResult.Principal.FindFirstValue(ClaimTypes.NameIdentifier); // Use this for provider login info
+				var provider = authenticateResult.Properties.Items["LoginProvider"]; // Get the provider name
+
+				var existedUser = await _userManager.FindByEmailAsync(email!);
+				var user = new ApplicationUser();
+
+				if (existedUser == null) {
+					user = new ApplicationUser {
+						Name = email,
+						Email = email,
+						UserName = email,
+						EmailConfirmed = true
+					};
+					// Create user without a password
+					var result = await _userManager.CreateAsync(user);
+					if (!result.Succeeded) {
+						var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+						throw new ArgumentException("User creation failed: " + errors);
+					}
+
+					// Add role for user
+					IdentityResult assignRoleResult = await _userManager.AddToRoleAsync(user, Role.CUSTOMER);
+					if (!assignRoleResult.Succeeded) {
+						var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+						throw new ArgumentException("User creation failed: " + errors);
+					}
+
+					// Link the external login to the user
+					var loginInfo = new UserLoginInfo(provider, providerKey, provider);
+					await _userManager.AddLoginAsync(existedUser ?? user, loginInfo);
+				}
+
+				// Check link external login
+				var loginInfos = await _userManager.GetLoginsAsync(existedUser ?? user);
+				var hasLinkedProvider = loginInfos.Any(login => login.LoginProvider == provider);
+				if (!hasLinkedProvider) {
+					throw new ApplicationException("User exists but has not linked this provider");
+				}
+
+				var token = await _tokenService.GenerateToken(user, populateExp: true);
+
+				// Set token inside cookie
+				var tokenRequestDto = new TokenRequestDto {
+					AccessToken = token.AccessToken,
+					RefreshToken = token.RefreshToken,
+				};
+				_tokenService.SetTokensInsideCookie(tokenRequestDto);
+
+				return new AuthResponseDto {
+					Success = true,
+					AccessToken = token.AccessToken,
+					RefreshToken = token.RefreshToken,
+					Message = "Login successfully"
+				};
+			} catch (Exception ex) {
+				throw new Exception($"Error handling external login: {ex.Message}");
 			}
 		}
 	}

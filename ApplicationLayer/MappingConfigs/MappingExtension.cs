@@ -12,6 +12,7 @@ using ApplicationLayer.DTOs.Responses.Coupon;
 using ApplicationLayer.DTOs.Responses.Meal;
 using ApplicationLayer.DTOs.Responses.Menu;
 using ApplicationLayer.DTOs.Responses.Merchant;
+using ApplicationLayer.DTOs.Responses.Notification;
 using ApplicationLayer.DTOs.Responses.Order;
 using ApplicationLayer.DTOs.Responses.Payment;
 using ApplicationLayer.DTOs.Responses.PaymentDestination;
@@ -19,6 +20,7 @@ using ApplicationLayer.DTOs.Responses.Product;
 using ApplicationLayer.DTOs.Responses.Review;
 using ApplicationLayer.DTOs.Responses.Table;
 using ApplicationLayer.DTOs.Responses.User;
+using ApplicationLayer.DTOs.Responses.UserCoupon;
 using ApplicationLayer.DTOs.Responses.UserProfile;
 using AutoMapper;
 using DomainLayer.Entites;
@@ -60,7 +62,9 @@ namespace ApplicationLayer.MappingConfigs {
 				config.CreateMap<UserRole, RoleResponse>();
 
 				config.CreateMap<Review, ReviewResponse>();
+				config.CreateMap<Notification, NotificationDto>();
 				config.CreateMap<Payment, PaymentResponse>();
+				config.CreateMap<UserCoupon, UserCouponResponse>();
 
 				#endregion
 

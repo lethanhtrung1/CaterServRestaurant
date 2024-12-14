@@ -23,7 +23,6 @@
 
   <ItemGroup>
     <Folder Include="Logs\" />
-    <Folder Include="Resources\Images\" />
     <Folder Include="wwwroot\Teamplates\" />
     <Folder Include="wwwroot\Uploads\" />
   </ItemGroup>

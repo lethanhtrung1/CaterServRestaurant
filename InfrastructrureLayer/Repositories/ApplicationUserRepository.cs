@@ -56,6 +56,28 @@ namespace InfrastructrureLayer.Repositories {
 			return await query.ToListAsync();
 		}
 
+		public async Task<(IEnumerable<ApplicationUser>, int)> GetPagingAsync(Expression<Func<ApplicationUser, bool>>? predicate = null,
+			int pageNumber = 1, int pageSize = 10, string? includeProperties = null) {
+
+			IQueryable<ApplicationUser> query = _dbSet;
+			if (predicate != null) {
+				query = query.Where(predicate);
+			}
+			if (!string.IsNullOrEmpty(includeProperties)) {
+				foreach (var property in includeProperties.Split(new Char[] { ',' }, StringSplitOptions.RemoveEmptyEntries)) {
+					query = query.Include(property);
+				}
+			}
+			var totalRecord = await query.CountAsync();
+			var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
+
+			return (items, totalRecord);
+		}
+
+		public async Task<int> GetTotalUsers() {
+			return await _dbContext.ApplicationUsers.CountAsync();
+		}
+
 		public Task RemoveAsync(ApplicationUser entity) {
 			_dbContext.Set<ApplicationUser>().Remove(entity);
 			return Task.CompletedTask;

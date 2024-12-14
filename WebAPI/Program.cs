@@ -1,6 +1,7 @@
 using ApplicationLayer.DependencyInjection;
+using ApplicationLayer.Hubs;
 using ApplicationLayer.Options;
-using InfrastructrureLayer.Data;
+using Hangfire;
 using InfrastructrureLayer.DependencyInjection;
 using WebAPI.Extensions;
 
@@ -13,8 +14,7 @@ public class Program {
 		builder.Services.AddControllers();
 		// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 		builder.Services.AddEndpointsApiExplorer();
-		builder.Services.AddApplicationService();
-
+		builder.Services.AddApplicationService(builder.Configuration);
 		builder.Services.AddInfrastructureService(builder.Configuration);
 		builder.Services.AddServiceExtensions(builder.Configuration);
 
@@ -22,8 +22,11 @@ public class Program {
 		builder.Services.Configure<MomoOptions>(builder.Configuration.GetSection(MomoOptions.ConfigName));
 		builder.Services.Configure<CloudinaryOptions>(builder.Configuration.GetSection(CloudinaryOptions.ConfigName));
 
-		builder.Services.AddSignalR();
+		builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
+		//builder.Services.AddDistributedMemoryCache();
+		//builder.Services.AddSession();
+		builder.Services.AddSignalR();
 		builder.Services.AddHttpContextAccessor();
 
 		builder.Services.AddCors(options => {
@@ -59,17 +62,13 @@ public class Program {
 
 		app.UseAuthorization();
 
-		SeedDatabase();
+		app.MapHub<NotificationHub>("/notificationHub");
+		//app.MapHub<NotificationHub>("/dashboardHub");
+
+		//app.UseHangfireDashboard();
 
 		app.MapControllers();
 
 		app.Run();
-
-		void SeedDatabase() {
-			using (var scope = app.Services.CreateScope()) {
-				var dbInitializer = scope.ServiceProvider.GetRequiredService<IDbInitializer>();
-				dbInitializer.Initialize();
-			}
-		}
 	}
 }

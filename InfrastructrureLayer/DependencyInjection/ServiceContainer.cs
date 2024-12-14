@@ -2,6 +2,7 @@
 using ApplicationLayer.Interfaces;
 using ApplicationLayer.Logging;
 using ApplicationLayer.Options;
+using DomainLayer.Caching;
 using DomainLayer.Common;
 using DomainLayer.Entites;
 using InfrastructrureLayer.Authentication;
@@ -31,6 +32,8 @@ namespace InfrastructrureLayer.DependencyInjection {
 				options.Password.RequireUppercase = true;
 				options.Password.RequireLowercase = true;
 
+				options.User.RequireUniqueEmail = true;
+
 				// User lockout
 				options.Lockout.AllowedForNewUsers = true;
 				options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
@@ -38,6 +41,13 @@ namespace InfrastructrureLayer.DependencyInjection {
 
 				// Reset password
 				options.Tokens.PasswordResetTokenProvider = TokenOptions.DefaultEmailProvider;
+
+				// Confirmation Email
+				//options.SignIn.RequireConfirmedEmail = true;
+				options.Tokens.EmailConfirmationTokenProvider = TokenOptions.DefaultEmailProvider;
+
+				// 2FA
+				options.Tokens.AuthenticatorTokenProvider = TokenOptions.DefaultEmailProvider;
 			})
 				.AddEntityFrameworkStores<AppDbContext>()
 				.AddDefaultTokenProviders();
@@ -68,6 +78,9 @@ namespace InfrastructrureLayer.DependencyInjection {
 			services.AddScoped<ITokenService, TokenService>();
 			services.AddScoped<IUnitOfWork, UnitOfWork>();
 			services.AddScoped<IDbInitializer, DbInitializer>();
+
+			services.AddSingleton<ConnectionHelper>();
+			services.AddScoped<ICacheService, CacheService>();
 
 			return services;
 		}

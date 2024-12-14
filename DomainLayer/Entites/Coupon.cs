@@ -12,5 +12,6 @@
 		///// Loại giảm giá: 1 - Giảm giá theo %, 2 - Giảm giá theo số tiền
 		///// </summary>
 		//public int DiscountType { get; set; }
+		public virtual IEnumerable<UserCoupon>? UserCoupons { get; set; }
 	}
 }

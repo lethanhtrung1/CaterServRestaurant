@@ -69,7 +69,7 @@ namespace ApplicationLayer.Vnpay.Requests {
 			}
 
 			string result = baseUrl + "?" + data.ToString();
-			var secureHash = HashHelper.HmacSHA521(secretKey, data.ToString().Remove(data.Length - 1, 1));
+			var secureHash = HashHelper.HmacSHA512(secretKey, data.ToString().Remove(data.Length - 1, 1));
 
 			return result += "vnp_SecureHash=" + secureHash;
 		}

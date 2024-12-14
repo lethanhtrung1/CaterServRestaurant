@@ -16,169 +16,175 @@ namespace ApplicationLayer.Services {
 		private readonly ICurrentUserService _currentUserService;
 		private readonly IMapper _mapper;
 		private readonly ILogException _logger;
+		private readonly IUserCouponService _userCouponService;
 
 		public OrderService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentUserService currentUserService,
-			ILogException logger) {
+			ILogException logger, IUserCouponService userCouponService) {
 			_currentUserService = currentUserService;
 			_unitOfWork = unitOfWork;
 			_mapper = mapper;
 			_logger = logger;
+			_userCouponService = userCouponService;
 		}
 
 		public async Task<ApiResponse<OrderResponse>> CreateOrder(CreateOrderRequest request) {
 			try {
 				var customerId = _currentUserService.UserId;
+
+				if (string.IsNullOrEmpty(customerId)) {
+					throw new UnauthorizedAccessException();
+				}
+
 				var meal = await _unitOfWork.Meal.GetAsync(x => x.Id == request.MealId);
-				if (meal == null) return new ApiResponse<OrderResponse>(false, "Meal not found");
+				if (meal == null) {
+					return new ApiResponse<OrderResponse>(false, "Meal not found");
+				}
 
 				var mealProducts = await _unitOfWork.MealProduct.GetListAsync(x => x.MealId == request.MealId, includeProperties: "Product");
-				if (mealProducts == null || !mealProducts.Any()) {
+				if (mealProducts == null || !mealProducts.Any())
 					return new ApiResponse<OrderResponse>(false, "Meal is empty");
-				}
 
 				await _unitOfWork.Order.BeginTransactionAsync();
 
-				// Dine in
-				if (request.OrderType == 1) {
-					var booking = await _unitOfWork.Booking.GetLatestBookingByTableIdAsync(request.TableId);
-					if (booking == null) return new ApiResponse<OrderResponse>(false, "Booking not found");
-					var order = await _unitOfWork.Order.GetAsync(x => x.BookingId == booking.Id);
+				var response = request.OrderType == 1
+					? await HandleDineInOrder(request, meal, mealProducts, customerId)
+					: await HandleTakeawayOrDeliveryOrder(request, meal, mealProducts, customerId);
 
-					// create new order
-					if (order == null) {
-						var newOrder = new Order() {
-							Id = Guid.NewGuid(),
-							OrderType = request.OrderType,
-							OrderStatus = OrderStatus.Pending,
-							CreatedDate = DateTime.Now,
-							LastUpdatedAt = DateTime.Now,
-							ShippingDate = DateTime.Now.AddMinutes(40),
-							CustomerId = customerId,
-							CustomerName = request.CustomerName,
-							CustomerPhone = request.CustomerPhone,
-							ShippingAddress = request.ShippingAddress,
-							DiscountAmount = request.DiscountAmount,
-							TotalAmount = meal.TotalPrice,
-						};
-						await _unitOfWork.Order.AddAsync(newOrder);
+				if (response == null) {
+					await _unitOfWork.Order.RollBackTransactionAsync();
+					return new ApiResponse<OrderResponse>(false, "Error occeurred while creating order");
+				}
 
-						var response = _mapper.Map<OrderResponse>(newOrder);
-						response.OrderTypeName = OrderType.DineIn;
-						response.OrderDetails = new List<OrderDetailResponse>();
-
-						// Create new OrderDetails
-						foreach (var item in mealProducts) {
-							var orderDetai = new OrderDetail {
-								Id = Guid.NewGuid(),
-								ProductId = item.ProductId,
-								ProductName = item.Product.Name,
-								OrderId = newOrder.Id,
-								UnitName = item.Product.UnitName!,
-								Price = item.Product.SellingPrice,
-								Quantity = item.Quantity,
-								TotalPrice = item.Price,
-								CreatedAt = DateTime.Now,
-							};
-							await _unitOfWork.OrderDetail.AddAsync(orderDetai);
-
-							response.OrderDetails.Add(_mapper.Map<OrderDetailResponse>(orderDetai));
-						}
-						// Remove Meal & MealProduct
-						await _unitOfWork.MealProduct.RemoveRangeAsync(mealProducts);
-						await _unitOfWork.Meal.RemoveAsync(meal);
-						await _unitOfWork.SaveChangeAsync();
-						await _unitOfWork.Order.EndTransactionAsync();
-
-						response.OrderDetails = response.OrderDetails.OrderByDescending(x => x.CreatedAt).ToList();
-						return new ApiResponse<OrderResponse>(response, true, "Create order successfully");
-					}
-					// Update order
-					else {
-						var totalOrderPrice = order.TotalAmount;
-						var response = _mapper.Map<OrderResponse>(order);
-						response.OrderDetails = new List<OrderDetailResponse>();
-
-						foreach (var item in mealProducts) {
-							var orderDetai = new OrderDetail {
-								Id = Guid.NewGuid(),
-								ProductId = item.ProductId,
-								ProductName = item.Product.Name,
-								OrderId = order.Id,
-								UnitName = item.Product.UnitName!,
-								Price = item.Product.SellingPrice,
-								Quantity = item.Quantity,
-								TotalPrice = item.Price,
-								CreatedAt = DateTime.Now,
-							};
-							totalOrderPrice += orderDetai.TotalPrice;
-							await _unitOfWork.OrderDetail.AddAsync(orderDetai);
-
-							response.OrderDetails.Add(_mapper.Map<OrderDetailResponse>(orderDetai));
-						}
-						order.TotalAmount = totalOrderPrice;
-						order.LastUpdatedAt = DateTime.Now;
-						await _unitOfWork.Order.UpdateAsync(order);
-
-						// Remove Meal & MealProduct
-						await _unitOfWork.MealProduct.RemoveRangeAsync(mealProducts);
-						await _unitOfWork.Meal.RemoveAsync(meal);
-						await _unitOfWork.SaveChangeAsync();
-						await _unitOfWork.Order.EndTransactionAsync();
-
-						response.OrderDetails = response.OrderDetails.OrderByDescending(x => x.CreatedAt).ToList();
-						return new ApiResponse<OrderResponse>(response, true, "Create Order successfully");
+				// User used coupon
+				if (request.CouponId != null && request.CouponId.HasValue) {
+					var removeCoupon = await _userCouponService.RemoveUserCoupon(request.CouponId.Value);
+					if (!removeCoupon) {
+						await _unitOfWork.Order.RollBackTransactionAsync();
+						return new ApiResponse<OrderResponse>(false, "Error occurred while handling apply coupon to order");
 					}
 				}
-				// Takeaway / Delivery
-				else {
-					var newOrder = new Order() {
-						Id = Guid.NewGuid(),
-						OrderType = request.OrderType,
-						OrderStatus = OrderStatus.Pending,
-						CreatedDate = DateTime.Now,
-						LastUpdatedAt = DateTime.Now,
-						ShippingDate = DateTime.Now.AddMinutes(40),
-						CustomerId = customerId,
-						CustomerName = request.CustomerName,
-						CustomerPhone = request.CustomerPhone,
-						ShippingAddress = request.ShippingAddress,
-						DiscountAmount = request.DiscountAmount,
-						TotalAmount = meal.TotalPrice,
-					};
-					await _unitOfWork.Order.AddAsync(newOrder);
-					var response = _mapper.Map<OrderResponse>(newOrder);
-					response.OrderTypeName = OrderType.TakeAway;
-					response.OrderDetails = new List<OrderDetailResponse>();
 
-					foreach (var item in mealProducts) {
-						var orderDetai = new OrderDetail {
-							Id = Guid.NewGuid(),
-							ProductId = item.ProductId,
-							ProductName = item.Product.Name,
-							OrderId = newOrder.Id,
-							UnitName = item.Product.UnitName!,
-							Price = item.Product.SellingPrice,
-							Quantity = item.Quantity,
-							TotalPrice = item.Price,
-							CreatedAt = DateTime.Now,
-						};
-						await _unitOfWork.OrderDetail.AddAsync(orderDetai);
-
-						response.OrderDetails.Add(_mapper.Map<OrderDetailResponse>(orderDetai));
-					}
-					await _unitOfWork.MealProduct.RemoveRangeAsync(mealProducts);
-					await _unitOfWork.Meal.RemoveAsync(meal);
-					await _unitOfWork.SaveChangeAsync();
-					await _unitOfWork.Order.EndTransactionAsync();
-
-					response.OrderDetails = response.OrderDetails.OrderByDescending(x => x.CreatedAt).ToList();
-					return new ApiResponse<OrderResponse>(response, true, "Create order successfully");
-				}
+				await _unitOfWork.Order.EndTransactionAsync();
+				return new ApiResponse<OrderResponse>(response, true, "Create order successfully");
 			} catch (Exception ex) {
 				await _unitOfWork.Order.RollBackTransactionAsync();
 				_logger.LogExceptions(ex);
 				return new ApiResponse<OrderResponse>(false, $"Internal server error occurred: {ex.Message}");
 			}
+		}
+
+		private async Task<OrderResponse> HandleDineInOrder(CreateOrderRequest request, Meal meal, IEnumerable<MealProduct> mealProducts, string customerId) {
+			var booking = await _unitOfWork.Booking.GetLatestBookingByTableIdAsync(request.TableId);
+			if (booking == null) {
+				throw new Exception($"Booking not found");
+				//return ApiResponse<OrderResponse>.Error("Booking not found");
+			}
+
+			var existingOrder = await _unitOfWork.Order.GetAsync(x => x.BookingId == booking.Id);
+
+			var orderResponse = existingOrder == null
+				? await CreateNewOrder(request, meal, mealProducts, customerId, OrderType.DineIn)
+				: await UpdateExistingOrder(existingOrder, mealProducts);
+
+			return orderResponse;
+		}
+
+		private async Task<OrderResponse> HandleTakeawayOrDeliveryOrder(CreateOrderRequest request, Meal meal, IEnumerable<MealProduct> mealProducts, string customerId) {
+			var coupon = await _unitOfWork.Coupon.GetAsync(x => x.Id == request.CouponId);
+			var discountAmount = coupon?.DiscountAmount ?? 0;
+
+			return await CreateNewOrder(request, meal, mealProducts, customerId, OrderType.TakeAway, discountAmount, DeliveryConfig.DeliveryAmount);
+		}
+
+		private async Task<OrderResponse> CreateNewOrder(CreateOrderRequest request, Meal meal, IEnumerable<MealProduct> mealProducts, string customerId, string orderType, decimal discountAmount = 0, decimal deliveryAmount = 0) {
+			var newOrder = new Order {
+				Id = Guid.NewGuid(),
+				OrderType = request.OrderType,
+				OrderStatus = OrderStatus.Pending,
+				CreatedDate = DateTime.Now,
+				LastUpdatedAt = DateTime.Now,
+				ShippingDate = DateTime.Now.AddMinutes(40),
+				CustomerId = customerId,
+				CustomerName = request.CustomerName,
+				CustomerPhone = request.CustomerPhone,
+				ShippingAddress = request.ShippingAddress,
+				DiscountAmount = discountAmount,
+				DeliveryAmount = deliveryAmount,
+				OrderAmount = meal.TotalPrice,
+				TotalAmount = meal.TotalPrice + deliveryAmount - discountAmount,
+			};
+
+			await _unitOfWork.Order.AddAsync(newOrder);
+
+			var response = await CreateOrderDetails(newOrder, mealProducts);
+			await RemoveMealAndProducts(meal, mealProducts);
+
+			response.OrderTypeName = orderType;
+			return response;
+		}
+
+		private async Task<OrderResponse> UpdateExistingOrder(Order existingOrder, IEnumerable<MealProduct> mealProducts) {
+			var response = _mapper.Map<OrderResponse>(existingOrder);
+			response.OrderDetails = new List<OrderDetailResponse>();
+
+			foreach (var item in mealProducts) {
+				var orderDetail = new OrderDetail {
+					Id = Guid.NewGuid(),
+					ProductId = item.ProductId,
+					ProductName = item.Product.Name,
+					OrderId = existingOrder.Id,
+					UnitName = item.Product.UnitName!,
+					Price = item.Product.SellingPrice,
+					Quantity = item.Quantity,
+					TotalPrice = item.Price,
+					CreatedAt = DateTime.Now,
+				};
+
+				existingOrder.OrderAmount += orderDetail.TotalPrice;
+				existingOrder.TotalAmount += orderDetail.TotalPrice;
+				await _unitOfWork.OrderDetail.AddAsync(orderDetail);
+				response.OrderDetails.Add(_mapper.Map<OrderDetailResponse>(orderDetail));
+			}
+
+			existingOrder.LastUpdatedAt = DateTime.Now;
+			await _unitOfWork.Order.UpdateAsync(existingOrder);
+			await RemoveMealAndProducts(null, mealProducts);
+
+			response.OrderDetails = response.OrderDetails.OrderByDescending(x => x.CreatedAt).ToList();
+			return response;
+		}
+
+		private async Task<OrderResponse> CreateOrderDetails(Order order, IEnumerable<MealProduct> mealProducts) {
+			var response = _mapper.Map<OrderResponse>(order);
+			response.OrderDetails = new List<OrderDetailResponse>();
+
+			foreach (var item in mealProducts) {
+				var orderDetail = new OrderDetail {
+					Id = Guid.NewGuid(),
+					ProductId = item.ProductId,
+					ProductName = item.Product.Name,
+					OrderId = order.Id,
+					UnitName = item.Product.UnitName!,
+					Price = item.Product.SellingPrice,
+					Quantity = item.Quantity,
+					TotalPrice = item.Price,
+					CreatedAt = DateTime.Now,
+				};
+
+				await _unitOfWork.OrderDetail.AddAsync(orderDetail);
+				response.OrderDetails.Add(_mapper.Map<OrderDetailResponse>(orderDetail));
+			}
+
+			response.OrderDetails = response.OrderDetails.OrderByDescending(x => x.CreatedAt).ToList();
+			return response;
+		}
+
+		private async Task RemoveMealAndProducts(Meal? meal, IEnumerable<MealProduct> mealProducts) {
+			await _unitOfWork.MealProduct.RemoveRangeAsync(mealProducts);
+			if (meal != null)
+				await _unitOfWork.Meal.RemoveAsync(meal);
+
+			await _unitOfWork.SaveChangeAsync();
 		}
 
 		public async Task<bool> CancelOrder(Guid orderId) {
@@ -377,6 +383,7 @@ namespace ApplicationLayer.Services {
 					DeliveryAmount = 0,
 					DepositAmount = 0,
 					DiscountAmount = 0,
+					OrderAmount = 0,
 					TotalAmount = 0,
 					OrderType = 1,
 					OrderStatus = OrderStatus.Processing,
@@ -420,6 +427,7 @@ namespace ApplicationLayer.Services {
 
 				await _unitOfWork.OrderDetail.AddAsync(newOrderDetail);
 				checkOrder.TotalAmount += newOrderDetail.TotalPrice;
+				checkOrder.OrderAmount = checkOrder.TotalAmount;
 				checkOrder.LastUpdatedAt = DateTime.Now;
 				await _unitOfWork.Order.UpdateAsync(checkOrder);
 				await _unitOfWork.SaveChangeAsync();

@@ -4,12 +4,13 @@ using ApplicationLayer.DTOs.Pagination;
 using ApplicationLayer.DTOs.Requests.Booking;
 using ApplicationLayer.DTOs.Responses;
 using ApplicationLayer.DTOs.Responses.Booking;
+using ApplicationLayer.Hubs;
 using ApplicationLayer.Interfaces;
 using ApplicationLayer.Logging;
 using AutoMapper;
 using DomainLayer.Common;
 using DomainLayer.Entites;
-using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.SignalR;
 
 namespace ApplicationLayer.Services {
 	public class BookingService : IBookingService {
@@ -17,15 +18,15 @@ namespace ApplicationLayer.Services {
 		private readonly ILogException _logger;
 		private readonly IMapper _mapper;
 		private readonly ICurrentUserService _currentUserService;
-		private readonly UserManager<ApplicationUser> _userManager;
+		private readonly IHubContext<NotificationHub> _hubContext;
 
 		public BookingService(IUnitOfWork unitOfWork, ILogException logger, IMapper mapper,
-			ICurrentUserService currentUserService, UserManager<ApplicationUser> userManager) {
+			ICurrentUserService currentUserService, IHubContext<NotificationHub> hubContext) {
 			_unitOfWork = unitOfWork;
 			_logger = logger;
 			_mapper = mapper;
 			_currentUserService = currentUserService;
-			_userManager = userManager;
+			_hubContext = hubContext;
 		}
 
 		public async Task<ApiResponse<BookingResponse>> CancelBookingAsync(Guid id) {
@@ -97,36 +98,55 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<BookingResponse>> CreateAsync(CreateBookingRequest request) {
 			try {
+				await _unitOfWork.Booking.BeginTransactionAsync();
+
+				// Map request to booking entity
 				var bookingToDb = _mapper.Map<Booking>(request);
 				bookingToDb.BookingDate = DateTime.Now;
 				bookingToDb.Status = BookingStatus.Pending;
+
+				// Set customer ID if available
 				var customerId = _currentUserService.UserId;
 				if (!string.IsNullOrEmpty(customerId)) {
 					bookingToDb.CustomerId = customerId;
 				}
-				await _unitOfWork.Booking.AddAsync(bookingToDb);
-				if (request.TableIds != null) {
-					foreach (var item in request.TableIds) {
-						var bookingTable = new BookingTable {
-							Id = Guid.NewGuid(),
-							TableId = item,
-							BookingId = bookingToDb.Id
-						};
-						await _unitOfWork.BookingTable.AddAsync(bookingTable);
-					}
-				}
-				await _unitOfWork.SaveChangeAsync();
 
+				// Add booking to database
+				await _unitOfWork.Booking.AddAsync(bookingToDb);
+
+				// Add related booking tables if provided
+				if (request.TableIds?.Any() == true) {
+					var bookingTables = request.TableIds.Select(tableId => new BookingTable {
+						Id = Guid.NewGuid(),
+						TableId = tableId,
+						BookingId = bookingToDb.Id
+					});
+
+					await _unitOfWork.BookingTable.AddRangeAsync(bookingTables);
+				}
+
+				// Save changes and commit transaction
+				await _unitOfWork.SaveChangeAsync();
+				await _unitOfWork.Booking.EndTransactionAsync();
+
+				// Map result to response and send notification
 				var result = _mapper.Map<BookingResponse>(bookingToDb);
+				await _hubContext.Clients.All.SendAsync("NotificationBooking", result);
+
 				return new ApiResponse<BookingResponse>(result, true, "Created successfully");
 			} catch (Exception ex) {
+				// Rollback transaction and log exception
+				await _unitOfWork.Booking.RollBackTransactionAsync();
 				_logger.LogExceptions(ex);
+
 				return new ApiResponse<BookingResponse>(false, $"Internal server error occurred: {ex.Message}");
 			}
 		}
 
 		public async Task<ApiResponse<BookingResponse>> CreateForStaffAsync(CreateBookingRequest request) {
 			try {
+				await _unitOfWork.Booking.BeginTransactionAsync();
+
 				var bookingToDb = _mapper.Map<Booking>(request);
 				bookingToDb.BookingDate = DateTime.Now;
 				bookingToDb.Status = BookingStatus.Accept;
@@ -137,21 +157,25 @@ namespace ApplicationLayer.Services {
 				}
 				await _unitOfWork.Booking.AddAsync(bookingToDb);
 
-				if (request.TableIds != null) {
-					foreach (var item in request.TableIds) {
-						var bookingTable = new BookingTable {
-							Id = Guid.NewGuid(),
-							TableId = item,
-							BookingId = bookingToDb.Id
-						};
-						await _unitOfWork.BookingTable.AddAsync(bookingTable);
-					}
-				}
-				await _unitOfWork.SaveChangeAsync();
+				// Add related booking tables if provided
+				if (request.TableIds?.Any() == true) {
+					var bookingTables = request.TableIds.Select(tableId => new BookingTable {
+						Id = Guid.NewGuid(),
+						TableId = tableId,
+						BookingId = bookingToDb.Id
+					});
 
+					await _unitOfWork.BookingTable.AddRangeAsync(bookingTables);
+				}
+
+				await _unitOfWork.SaveChangeAsync();
+				await _unitOfWork.Booking.EndTransactionAsync();
+
+				// Map result to response
 				var result = _mapper.Map<BookingResponse>(bookingToDb);
 				return new ApiResponse<BookingResponse>(result, true, "Created successfully");
 			} catch (Exception ex) {
+				await _unitOfWork.Booking.RollBackTransactionAsync();
 				_logger.LogExceptions(ex);
 				return new ApiResponse<BookingResponse>(false, $"Internal server error occurred: {ex.Message}");
 			}

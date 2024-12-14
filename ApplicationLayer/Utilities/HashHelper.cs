@@ -3,7 +3,7 @@ using System.Text;
 
 namespace ApplicationLayer.Utilities {
 	public class HashHelper {
-		public static string HmacSHA521(string key, string inputData) {
+		public static string HmacSHA512(string key, string inputData) {
 			var hash = new StringBuilder();
 
 			byte[] keyBytes = Encoding.UTF8.GetBytes(key);

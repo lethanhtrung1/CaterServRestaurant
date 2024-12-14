@@ -21,7 +21,6 @@
     <PackageReference Include="StackExchange.Redis" Version="2.8.22" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.1.2" />
 	<PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.10" />
-	<!--<PackageReference Include="Microsoft.AspNetCore.Session" Version="2.2.0" />-->
   </ItemGroup>
 
 </Project>

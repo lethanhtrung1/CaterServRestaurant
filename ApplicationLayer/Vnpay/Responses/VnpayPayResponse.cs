@@ -32,7 +32,7 @@ namespace ApplicationLayer.Vnpay.Responses {
 					data.Append(WebUtility.UrlEncode(keyValue.Key) + "=" + WebUtility.UrlEncode(keyValue.Value) + "&");
 				}
 			}
-			string checkSum = HashHelper.HmacSHA521(secretKey, data.ToString().Remove(data.Length - 1, 1));
+			string checkSum = HashHelper.HmacSHA512(secretKey, data.ToString().Remove(data.Length - 1, 1));
 
 			return checkSum.Equals(vnp_SecureHash, StringComparison.InvariantCultureIgnoreCase);
 		}

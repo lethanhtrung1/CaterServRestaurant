@@ -5,6 +5,7 @@ using ApplicationLayer.DTOs.Responses.Coupon;
 using ApplicationLayer.Interfaces;
 using ApplicationLayer.Logging;
 using AutoMapper;
+using DomainLayer.Caching;
 using DomainLayer.Common;
 using DomainLayer.Entites;
 
@@ -13,11 +14,13 @@ namespace ApplicationLayer.Services {
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly ILogException _logger;
 		private readonly IMapper _mapper;
+		private readonly ICacheService _cacheService;
 
-		public CouponService(IUnitOfWork unitOfWork, ILogException logger, IMapper mapper) {
+		public CouponService(IUnitOfWork unitOfWork, ILogException logger, IMapper mapper, ICacheService cacheService) {
 			_unitOfWork = unitOfWork;
 			_logger = logger;
 			_mapper = mapper;
+			_cacheService = cacheService;
 		}
 
 		public async Task<ApiResponse<CouponResponse>> CreateAsync(CreateCouponRequest request) {
@@ -27,6 +30,11 @@ namespace ApplicationLayer.Services {
 				await _unitOfWork.Coupon.AddAsync(couponToDb);
 				await _unitOfWork.SaveChangeAsync();
 
+				// Set initial quantity into Redis
+				var couponKey = $"coupon:{couponToDb.Id}:quantity";
+				await _cacheService.SetData(couponKey, couponToDb.Quantity, DateTimeOffset.UtcNow.AddDays(7));
+
+				// Map response and return
 				var response = _mapper.Map<CouponResponse>(couponToDb);
 				return new ApiResponse<CouponResponse>(response, true, "Created successfully");
 			} catch (Exception ex) {
@@ -44,6 +52,11 @@ namespace ApplicationLayer.Services {
 
 			await _unitOfWork.Coupon.RemoveAsync(coupon);
 			await _unitOfWork.SaveChangeAsync();
+
+			// Remove cache
+			var couponKey = $"coupon:{id}:quantity";
+			await _cacheService.RemoveData(couponKey);
+
 			return true;
 		}
 
@@ -162,10 +175,10 @@ namespace ApplicationLayer.Services {
 					return new ApiResponse<CouponResponse>(false, $"Coupon with id: {request.Id} not found");
 				}
 
+				// Update coupon
 				if (!string.IsNullOrEmpty(request.CouponCode) && checkCouponFromDb.CouponCode != request.CouponCode) {
 					checkCouponFromDb.CouponCode = request.CouponCode;
 				}
-
 				checkCouponFromDb.DiscountPercent = request.DiscountPercent;
 				checkCouponFromDb.DiscountAmount = request.DiscountAmount;
 				checkCouponFromDb.Quantity = request.Quantity;
@@ -174,6 +187,15 @@ namespace ApplicationLayer.Services {
 				await _unitOfWork.Coupon.UpdateAsync(checkCouponFromDb);
 				await _unitOfWork.SaveChangeAsync();
 
+				// Update cache
+				try {
+					var couponKey = $"coupon:{request.Id}:quantity";
+					await _cacheService.SetData(couponKey, checkCouponFromDb.Quantity, DateTimeOffset.UtcNow.AddDays(7));
+				} catch (Exception cacheEx) {
+					_logger.LogToDebugger($"Failed to update cache for coupon {request.Id}: {cacheEx.Message}");
+				}
+
+				// Map response
 				var response = _mapper.Map<CouponResponse>(checkCouponFromDb);
 				return new ApiResponse<CouponResponse>(response, true, "Updated successfully");
 			} catch (Exception ex) {

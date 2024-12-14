@@ -15,6 +15,7 @@
 		public decimal DeliveryAmount { get; set; }
 		public decimal DepositAmount { get; set; }
 		public decimal DiscountAmount { get; set; }
+		public decimal OrderAmount { get; set; }
 		public decimal TotalAmount { get; set; }
 
 		public List<OrderDetailResponse>? OrderDetails { get; set; }

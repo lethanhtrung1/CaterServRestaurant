@@ -8,6 +8,7 @@ using ApplicationLayer.Options;
 using AutoMapper;
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
+using DomainLayer.Caching;
 using DomainLayer.Common;
 using DomainLayer.Entites;
 using ExcelDataReader;
@@ -21,9 +22,10 @@ namespace ApplicationLayer.Services {
 		private readonly IMapper _mapper;
 		private readonly Cloudinary _cloudinary;
 		private readonly CloudinaryOptions _cloudinaryOptions;
+		private readonly ICacheService _cacheService;
 
 		public ProductService(IUnitOfWork unitOfWork, ILogException logger, IMapper mapper,
-			IOptions<CloudinaryOptions> options) {
+			IOptions<CloudinaryOptions> options, ICacheService cacheService) {
 			_unitOfWork = unitOfWork;
 			_logger = logger;
 			_mapper = mapper;
@@ -34,6 +36,7 @@ namespace ApplicationLayer.Services {
 				_cloudinaryOptions.ApiSecret
 			);
 			_cloudinary = new Cloudinary(account);
+			_cacheService = cacheService;
 		}
 
 		public async Task<byte[]> GetTemplateExcelFile(string fileName) {
@@ -106,6 +109,9 @@ namespace ApplicationLayer.Services {
 					await _unitOfWork.SaveChangeAsync();
 					await _unitOfWork.Product.EndTransactionAsync();
 
+					// Remove cache
+					await _cacheService.RemoveMultipleKeysAsync("Products:*");
+
 					// remove file
 					if (File.Exists(filePath)) {
 						File.Delete(filePath);
@@ -148,6 +154,9 @@ namespace ApplicationLayer.Services {
 				await _unitOfWork.Product.AddAsync(productToDb);
 				await _unitOfWork.SaveChangeAsync();
 
+				await _cacheService.RemoveData($"Product_{productToDb.Id}");
+				await _cacheService.RemoveMultipleKeysAsync("Products:*");
+
 				var menu = await _unitOfWork.Menu.GetAsync(x => x.Id == productToDb.MenuId);
 				var category = await _unitOfWork.Category.GetAsync(x => x.Id == productToDb.CategoryId);
 
@@ -158,7 +167,7 @@ namespace ApplicationLayer.Services {
 				response.MenuDto = productMenu;
 				response.CategoryDto = productCategory;
 
-				return new ApiResponse<ProductResponse>(response, true, "");
+				return new ApiResponse<ProductResponse>(response, true, "Product created successfully");
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
 				return new ApiResponse<ProductResponse>(false, $"Internal server error occurred: {ex.Message}");
@@ -181,6 +190,10 @@ namespace ApplicationLayer.Services {
 
 			await _unitOfWork.Product.RemoveAsync(product);
 			await _unitOfWork.SaveChangeAsync();
+
+			await _cacheService.RemoveData($"Product_{id}");
+			await _cacheService.RemoveMultipleKeysAsync("Products:*");
+
 			return true;
 		}
 
@@ -239,15 +252,17 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<ProductResponse>> GetByIdAsync(Guid id) {
 			try {
+				var cacheKey = $"Product_{id}";
+				var cacheData = await _cacheService.GetData<ProductResponse>(cacheKey);
+				if (cacheData != null) {
+					return new ApiResponse<ProductResponse>(cacheData, true, "Retrieve products successfully");
+				}
+
 				var product = await _unitOfWork.Product.GetAsync(x => x.Id == id, includeProperties: "ProductImages,Menu,Category");
 
 				if (product == null) {
 					return new ApiResponse<ProductResponse>(false, $"Product with id: {id} not found");
 				}
-
-				//var productImagesDto = _mapper.Map<List<ProductImageDto>>(product.ProductImages);
-				//var productMenuDto = _mapper.Map<ProductMenuDto>(product.Menu);
-				//var productCategoryDto = _mapper.Map<ProductCategoryDto>(product.Category);
 
 				var productDto = _mapper.Map<ProductResponse>(product);
 
@@ -255,7 +270,11 @@ namespace ApplicationLayer.Services {
 				productDto.CategoryDto = _mapper.Map<ProductCategoryDto>(product.Category);
 				productDto.MenuDto = _mapper.Map<ProductMenuDto>(product.Menu);
 
-				return new ApiResponse<ProductResponse>(productDto, true, "");
+				var expirationTime = DateTime.UtcNow.AddMinutes(5);
+				cacheData = productDto;
+				await _cacheService.SetData<ProductResponse>(cacheKey, cacheData, expirationTime);
+
+				return new ApiResponse<ProductResponse>(cacheData, true, "Retrieve products successfully");
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
 				return new ApiResponse<ProductResponse>(false, $"Internal server error occurred: {ex.Message}");
@@ -264,20 +283,28 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<PagedList<ProductResponse>>> GetListAsync(PagingRequest request) {
 			try {
-				var products = await _unitOfWork.Product.GetListAsync(includeProperties: "Menu,Category");
-				var productsPagedList = products.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize);
+				var cacheKey = $"Products:{request.PageNumber}:{request.PageSize}";
+				var cacheData = await _cacheService.GetData<PagedList<ProductResponse>>(cacheKey);
 
-				if (!productsPagedList.Any()) {
+				if (cacheData != null) {
+					return new ApiResponse<PagedList<ProductResponse>>(
+						cacheData, true, "Retrieve products successfully"
+					);
+				}
+
+				var productsPagedList = await _unitOfWork.Product
+					.GetPagingAsync(includeProperties: "Menu,Category",
+					pageNumber: request.PageNumber, pageSize: request.PageSize);
+
+				if (!productsPagedList.Item1.Any()) {
 					return new ApiResponse<PagedList<ProductResponse>>(false, "No record available");
 				}
 
-				int totalRecord = products.Count();
+				int totalRecord = productsPagedList.Item2;
 				var productResponseDto = new List<ProductResponse>();
 
-				foreach (var item in productsPagedList) {
+				foreach (var item in productsPagedList.Item1) {
 					var product = _mapper.Map<ProductResponse>(item);
-					//var productMenuDto = _mapper.Map<ProductMenuDto>(item.Menu);
-					//var productCategoryDto = _mapper.Map<ProductCategoryDto>(item.Category);
 
 					product.MenuDto = _mapper.Map<ProductMenuDto>(item.Menu);
 					product.CategoryDto = _mapper.Map<ProductCategoryDto>(item.Category);
@@ -285,10 +312,11 @@ namespace ApplicationLayer.Services {
 					productResponseDto.Add(product);
 				}
 
-				return new ApiResponse<PagedList<ProductResponse>>(
-					new PagedList<ProductResponse>(productResponseDto, request.PageNumber, request.PageSize, totalRecord),
-					true, ""
-				);
+				var expirationTime = DateTime.UtcNow.AddMinutes(5);
+				cacheData = new PagedList<ProductResponse>(productResponseDto, request.PageNumber, request.PageSize, totalRecord);
+				await _cacheService.SetData<PagedList<ProductResponse>>(cacheKey, cacheData, expirationTime);
+
+				return new ApiResponse<PagedList<ProductResponse>>(cacheData, true, "Retrieve products successfully");
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
 				return new ApiResponse<PagedList<ProductResponse>>(false, $"Internal server error occurred: {ex.Message}");
@@ -310,7 +338,7 @@ namespace ApplicationLayer.Services {
 
 				// Hanle upload new thumbnail
 				if (request.File != null) {
-					if(!string.IsNullOrEmpty(checkProductFromDb.ThumbnailPublicId)) {
+					if (!string.IsNullOrEmpty(checkProductFromDb.ThumbnailPublicId)) {
 						// Handle delete image from cloudinary
 						var deletionParam = new DeletionParams(checkProductFromDb.ThumbnailPublicId) {
 							ResourceType = ResourceType.Image,
@@ -321,6 +349,7 @@ namespace ApplicationLayer.Services {
 						}
 					}
 
+					// Handle upload new image to cloudinary
 					var file = request.File;
 					var uploadResult = new ImageUploadResult();
 					if (file != null) {
@@ -339,6 +368,17 @@ namespace ApplicationLayer.Services {
 				await _unitOfWork.Product.UpdateAsync(checkProductFromDb);
 				await _unitOfWork.SaveChangeAsync();
 
+				// Update cache product id
+				try {
+					var productKey = $"Product_{checkProductFromDb.Id}";
+					await _cacheService.SetData(productKey, checkProductFromDb,DateTimeOffset.UtcNow.AddMinutes(5));
+				} catch (Exception cacheEx) {
+					_logger.LogToDebugger($"Failed to update cache for coupon {request.Id}: {cacheEx.Message}");
+				}
+				// Remove cache paging
+				await _cacheService.RemoveMultipleKeysAsync("Products:*");
+
+				// Map response
 				var menu = await _unitOfWork.Menu.GetAsync(x => x.Id == checkProductFromDb.MenuId);
 				var category = await _unitOfWork.Category.GetAsync(x => x.Id == checkProductFromDb.CategoryId);
 

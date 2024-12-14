@@ -23,5 +23,7 @@ namespace DomainLayer.Common {
 		IPaymentSignatureRepository PaymentSignature { get; }
 		IApplicationUserRepository ApplicationUser { get; }
 		IReviewRepository Review { get; }
+		INotificationRepository Notification { get; }
+		IUserCouponRepository UserCoupon { get; }
 	}
 }

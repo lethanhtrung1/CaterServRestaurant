@@ -9,5 +9,7 @@ namespace DomainLayer.Entites {
 		public virtual Meal? Meal { get; set; }
 		public virtual IEnumerable<Order>? Orders { get; set; }
 		public virtual IEnumerable<Review>? Reviews { get; set; }
+		//public virtual IEnumerable<Notification>? Notifications { get; set; }
+		public virtual IEnumerable<UserCoupon>? UserCoupons { get; set; }
 	}
 }

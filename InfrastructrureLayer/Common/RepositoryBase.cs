@@ -65,6 +65,27 @@ namespace InfrastructrureLayer.Common {
 			return await query.ToListAsync();
 		}
 
+		public async Task<(IEnumerable<T>, int)> GetPagingAsync(Expression<Func<T, bool>>? predicate = null,
+			int pageNumber = 1, int pageSize = 10, string? includeProperties = null) {
+
+			IQueryable<T> query = _dbSet;
+
+			if (predicate != null) {
+				query = query.Where(predicate);
+			}
+
+			if (!string.IsNullOrEmpty(includeProperties)) {
+				foreach (var property in includeProperties.Split(new Char[] { ',' }, StringSplitOptions.RemoveEmptyEntries)) {
+					query = query.Include(property);
+				}
+			}
+
+			var totalRecord = await query.CountAsync();
+			var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
+
+			return (items, totalRecord);
+		}
+
 		public Task RemoveAsync(T entity) {
 			_dbContext.Set<T>().Remove(entity);
 			return Task.CompletedTask;

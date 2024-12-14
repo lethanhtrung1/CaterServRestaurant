@@ -21,6 +21,7 @@
 		/// </summary>
 		public decimal DepositAmount { get; set; }
 		public decimal DiscountAmount { get; set; }
+		public decimal OrderAmount { get; set; }
 		public decimal TotalAmount { get; set; }
 		public DateTime LastUpdatedAt { get; set; }
 

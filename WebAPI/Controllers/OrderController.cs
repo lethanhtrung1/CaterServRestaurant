@@ -42,7 +42,7 @@ namespace WebAPI.Controllers {
 			return Ok(result);
 		}
 
-		[HttpGet("get-orders-paging/{userId}")]
+		[HttpGet("customer/get-orders-paging")]
 		public async Task<IActionResult> GetOrdersPaging([FromQuery] string userId, [FromQuery] GetOrdersPagingRequest request) {
 			var result = await _orderService.GetOrdersByUserId(userId, request);
 			if (!result.Success) {
