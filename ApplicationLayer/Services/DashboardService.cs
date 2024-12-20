@@ -39,7 +39,7 @@ namespace ApplicationLayer.Services {
 				result.TotalRevenueAdmount = payments.Sum(x => x.RequiredAmount) ?? 0;
 
 				// Line Chart
-				result.TotalRevenue = GenerateLineChartData(payments);
+				result.TotalRevenue = GenerateLineChartData(payments, startDate, endDate);
 
 				// Get order details
 				var orderDetails = await _unitOfWork.OrderDetail.GetListAsync(
@@ -59,15 +59,23 @@ namespace ApplicationLayer.Services {
 			return new ApiResponse<DashboardDto>(result, true, "Retrieve successfully");
 		}
 
-		private List<LineChartDataDto> GenerateLineChartData(IEnumerable<Payment> payments) {
-			return payments
-				.GroupBy(x => x.PaymentDate.Date)
-				.Select(x => new LineChartDataDto {
-					Label = x.Key.ToString("dd/MM/yyyy"),
-					Value = x.Sum(y => y.RequiredAmount ?? 0)
-				})
-				.OrderByDescending(x => x.Label)
+		private List<LineChartDataDto> GenerateLineChartData(IEnumerable<Payment> payments, DateTime startDate, DateTime endDate) {
+			var allDates = Enumerable.Range(0, (endDate.Date - startDate.Date).Days + 1)
+				.Select(offset => startDate.Date.AddDays(offset))
 				.ToList();
+
+			// group data by date
+			var groupedPayments = payments
+				.GroupBy(x => x.PaymentDate.Date)
+				.ToDictionary(g => g.Key, g => g.Sum(y => y.RequiredAmount ?? 0));
+
+			var lineChartData = allDates.Select(date => new LineChartDataDto {
+				Label = date.ToString("dd/MM/yyyy"),
+				Value = groupedPayments.ContainsKey(date) ? groupedPayments[date] : 0
+			}).OrderBy(x => DateTime.ParseExact(x.Label, "dd/MM/yyyy", null))
+			.ToList();
+
+			return lineChartData;
 		}
 
 		private List<PieChartDataDto> GeneratePieChartData(
