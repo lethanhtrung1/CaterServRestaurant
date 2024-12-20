@@ -163,13 +163,6 @@ namespace ApplicationLayer.Services {
 
 			await _unitOfWork.Payment.BeginTransactionAsync();
 			try {
-				//var orderId = Guid.Parse(request.vnp_TxnRef);
-				//var order = await _unitOfWork.Order.GetAsync(x => x.Id == orderId);
-
-				//if (order == null || order.OrderStatus == OrderStatus.Completed) {
-				//	return new ApiResponse<(PaymentReturnDto, string)>(false, "Link invalid");
-				//}
-
 				var resultData = new PaymentReturnDto();
 				var isValidSignature = request.IsValidSignature(_vnpayOptions.HashSecret);
 

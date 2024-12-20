@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace WebAPI.Controllers {
 	[Route("api/[controller]")]
@@ -106,6 +105,15 @@ namespace WebAPI.Controllers {
 		public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request) {
 			var result = await _authService.VerifyEmail(request);
 			if (result == null || !result.IsSuccess) {
+				return BadRequest(result);
+			}
+			return Ok(result);
+		}
+
+		[HttpPost("verify-2fa")]
+		public async Task<IActionResult> VerifyTwoFactor([FromBody] TwoFactorRequest request) {
+			var result = await _authService.VerifyTwoFactor(request.Email, request.Token);
+			if(result == null || !result.Success) {
 				return BadRequest(result);
 			}
 			return Ok(result);

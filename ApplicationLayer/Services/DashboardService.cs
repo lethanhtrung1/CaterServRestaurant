@@ -20,7 +20,7 @@ namespace ApplicationLayer.Services {
 				result.TotalUsers = await _unitOfWork.ApplicationUser.GetTotalUsers();
 
 				DateTime startDate = criteria.ToLower() switch {
-					"weak" => DateTime.UtcNow.AddDays(-7),
+					"week" => DateTime.UtcNow.AddDays(-7),
 					//"month" => new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1),
 					"month" => DateTime.UtcNow.AddDays(-30),
 					_ => throw new ArgumentException("Invalid criteria", nameof(criteria))
@@ -85,59 +85,59 @@ namespace ApplicationLayer.Services {
 				.ToList();
 		}
 
-		//public async Task<ApiResponse<List<LineChartDataDto>>> GetRevenueAllMonth() {
-		//	try {
-		//		var result = new List<LineChartDataDto>();
-
-		//		var payments = await _unitOfWork.Payment.GetListAsync();
-
-		//		result = payments
-		//			.Where(x => x.PaymentStatus == PaymentStatus.Completed)
-		//			.GroupBy(g => g.PaymentDate.Month)
-		//			.Select(s => new LineChartDataDto {
-		//				Label = s.Key.ToString(),
-		//				Value = s.Sum(y => y.RequiredAmount ?? 0)
-		//			})
-		//			.ToList();
-
-		//		return new ApiResponse<List<LineChartDataDto>>(result, true, "Retrieve successfully");
-		//	} catch (Exception ex) {
-		//		throw new Exception($"{ex.Message}");
-		//	}
-		//}
-
 		public async Task<ApiResponse<List<LineChartDataDto>>> GetRevenueAllMonth() {
 			try {
 				var result = new List<LineChartDataDto>();
 
-				// Get all payments
 				var payments = await _unitOfWork.Payment.GetListAsync();
 
-				// Prepare data grouped by month and year
-				var groupedPayments = payments
-					.Where(x => x.PaymentStatus == PaymentStatus.Completed && x.PaymentDate.Year == DateTime.UtcNow.Year)
-					.GroupBy(g => new { g.PaymentDate.Year, g.PaymentDate.Month })
-					.Select(s => new {
-						Year = s.Key.Year,
-						Month = s.Key.Month,
-						TotalRevenue = s.Sum(y => y.RequiredAmount ?? 0)
+				result = payments
+					.Where(x => x.PaymentStatus == PaymentStatus.Completed)
+					.GroupBy(g => g.PaymentDate.Month)
+					.Select(s => new LineChartDataDto {
+						Label = s.Key.ToString(),
+						Value = s.Sum(y => y.RequiredAmount ?? 0)
 					})
-					.ToDictionary(x => (x.Year, x.Month), x => x.TotalRevenue);
-
-				// Ensure all months are present for each year in the range
-				for (int month = 1; month <= DateTime.UtcNow.Year; month++) {
-					var label = $"{month:D2}/{DateTime.UtcNow.Year}";
-					result.Add(new LineChartDataDto {
-						Label = label,
-						Value = groupedPayments.ContainsKey((DateTime.UtcNow.Year, month)) ? groupedPayments[(DateTime.UtcNow.Year, month)] : 0
-					});
-				}
+					.ToList();
 
 				return new ApiResponse<List<LineChartDataDto>>(result, true, "Retrieve successfully");
 			} catch (Exception ex) {
 				throw new Exception($"{ex.Message}");
 			}
 		}
+
+		//public async Task<ApiResponse<List<LineChartDataDto>>> GetRevenueAllMonth() {
+		//	try {
+		//		var result = new List<LineChartDataDto>();
+
+		//		// Get all payments
+		//		var payments = await _unitOfWork.Payment.GetListAsync();
+
+		//		// Prepare data grouped by month and year
+		//		var groupedPayments = payments
+		//			.Where(x => x.PaymentStatus == PaymentStatus.Completed && x.PaymentDate.Year == DateTime.UtcNow.Year)
+		//			.GroupBy(g => new { g.PaymentDate.Year, g.PaymentDate.Month })
+		//			.Select(s => new {
+		//				Year = s.Key.Year,
+		//				Month = s.Key.Month,
+		//				TotalRevenue = s.Sum(y => y.RequiredAmount ?? 0)
+		//			})
+		//			.ToDictionary(x => (x.Year, x.Month), x => x.TotalRevenue);
+
+		//		// Ensure all months are present for each year in the range
+		//		for (int month = 1; month <= DateTime.UtcNow.Year; month++) {
+		//			var label = $"{month:D2}/{DateTime.UtcNow.Year}";
+		//			result.Add(new LineChartDataDto {
+		//				Label = label,
+		//				Value = groupedPayments.ContainsKey((DateTime.UtcNow.Year, month)) ? groupedPayments[(DateTime.UtcNow.Year, month)] : 0
+		//			});
+		//		}
+
+		//		return new ApiResponse<List<LineChartDataDto>>(result, true, "Retrieve successfully");
+		//	} catch (Exception ex) {
+		//		throw new Exception($"{ex.Message}");
+		//	}
+		//}
 
 		public async Task<ApiResponse<List<LineChartDataDto>>> GetRevenueByMonth(int month) {
 			try {

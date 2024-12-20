@@ -246,6 +246,7 @@ namespace InfrastructrureLayer.Authentication {
 			var providers = _userManager.GetValidTwoFactorProvidersAsync(user).GetAwaiter().GetResult().FirstOrDefault()!;
 
 			var isConfirm = await _userManager.VerifyTwoFactorTokenAsync(user, providers, code);
+			//var isConfirm = await _userManager.VerifyTwoFactorTokenAsync(user, "email", code);
 			if (!isConfirm) {
 				return new AuthResponseDto(false, "Login failed. Please verify your credentials");
 			}
