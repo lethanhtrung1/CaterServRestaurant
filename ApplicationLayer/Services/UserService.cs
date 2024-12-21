@@ -102,6 +102,7 @@ namespace ApplicationLayer.Services {
 					Bank = request.Bank,
 					BankBranch = request.BankBranch,
 					BankNumber = request.BankNumber,
+					UserId = newUser.Id
 				};
 
 				await _unitOfWork.UserProfile.AddAsync(userProfile);
