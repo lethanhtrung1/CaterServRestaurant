@@ -275,7 +275,8 @@ namespace ApplicationLayer.Services {
 							resultData.PaymentId = paymentId;
 							resultData.PaymentMessage = "Confirm success";
 							resultData.Amount = request.amount;
-							resultData.PaymentDate = DateTimeOffset.FromUnixTimeSeconds(request.responseTime).UtcDateTime;
+							long responseTimeInSeconds = request.responseTime / 1000;
+							resultData.PaymentDate = DateTimeOffset.FromUnixTimeSeconds(responseTimeInSeconds).UtcDateTime;
 
 							payment.PaymentStatus = PaymentStatus.Completed;
 

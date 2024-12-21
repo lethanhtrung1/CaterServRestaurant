@@ -21,7 +21,6 @@ namespace ApplicationLayer.Services {
 
 				DateTime startDate = criteria.ToLower() switch {
 					"week" => DateTime.UtcNow.AddDays(-7),
-					//"month" => new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1),
 					"month" => DateTime.UtcNow.AddDays(-30),
 					_ => throw new ArgumentException("Invalid criteria", nameof(criteria))
 				};
@@ -45,7 +44,6 @@ namespace ApplicationLayer.Services {
 				var orderDetails = await _unitOfWork.OrderDetail.GetListAsync(
 					x => x.CreatedAt >= startDate && x.CreatedAt <= endDate, includeProperties: "Order,Product,Product.Menu,Product.Category");
 
-				// Tổng giá trị sản phẩm
 				var totalSum = orderDetails.Where(x => x.Order.OrderStatus == OrderStatus.Completed).Sum(x => x.TotalPrice);
 
 				// Pie chart group by Menu

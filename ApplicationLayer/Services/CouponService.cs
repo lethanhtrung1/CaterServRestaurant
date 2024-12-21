@@ -147,7 +147,7 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<PagedList<CouponResponse>>> GetListCouponActiveAsync(PagingRequest request) {
 			try {
-				var coupons = await _unitOfWork.Coupon.GetListAsync(x => !x.Inactive);
+				var coupons = await _unitOfWork.Coupon.GetListAsync(x => x.Inactive);
 				var couponsPagedList = coupons.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize);
 
 				if (!couponsPagedList.Any()) {

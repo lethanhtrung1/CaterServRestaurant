@@ -49,6 +49,11 @@ namespace ApplicationLayer.Services {
 					return new ApiResponse<UserCouponResponse>(false, "Invalid coupon request or no coupons left");
 				}
 
+				var checkUserCoupon = await _unitOfWork.UserCoupon.GetAsync(x => x.CouponId == couponId && x.UserId == userId);
+				if (checkUserCoupon != null) {
+					return new ApiResponse<UserCouponResponse>(false, "You already own this coupon");
+				}
+
 				// Decrement database quantity
 				checkCoupon.Quantity--;
 				await _unitOfWork.Coupon.UpdateAsync(checkCoupon);

@@ -43,7 +43,7 @@ namespace InfrastructrureLayer.DependencyInjection {
 				options.Tokens.PasswordResetTokenProvider = TokenOptions.DefaultEmailProvider;
 
 				// Confirmation Email
-				//options.SignIn.RequireConfirmedEmail = true;
+				options.SignIn.RequireConfirmedEmail = true;
 				options.Tokens.EmailConfirmationTokenProvider = TokenOptions.DefaultEmailProvider;
 
 				// 2FA
