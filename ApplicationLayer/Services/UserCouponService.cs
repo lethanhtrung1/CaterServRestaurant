@@ -110,7 +110,7 @@ namespace ApplicationLayer.Services {
 
 		public async Task<bool> RemoveUserCoupon(Guid id) {
 			try {
-				var userCoupon = await _unitOfWork.UserCoupon.GetAsync(x => x.Id == id);
+				var userCoupon = await _unitOfWork.UserCoupon.GetAsync(x => x.CouponId == id);
 
 				if (userCoupon == null) { return false; }
 
