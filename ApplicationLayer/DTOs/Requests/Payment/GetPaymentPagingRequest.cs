@@ -2,7 +2,7 @@
 
 namespace ApplicationLayer.DTOs.Requests.Payment {
 	public class GetPaymentPagingRequest : PagingRequest {
-		public DateTime? From { get; set; }
-		public DateTime? To { get; set; }
+		public string? From { get; set; }
+		public string? To { get; set; }
 	}
 }

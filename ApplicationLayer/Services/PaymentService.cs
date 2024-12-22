@@ -13,7 +13,9 @@ using ApplicationLayer.Vnpay.Responses;
 using AutoMapper;
 using DomainLayer.Common;
 using DomainLayer.Entites;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
+using System.Globalization;
 
 namespace ApplicationLayer.Services {
 	public class PaymentService : IPaymentService {
@@ -343,11 +345,13 @@ namespace ApplicationLayer.Services {
 				var payments = await _unitOfWork.Payment.GetListAsync(includeProperties: "PaymentDestination");
 
 				if (request.From != null) {
-					payments = payments.Where(x => x.PaymentDate >= request.From).ToList();
+					DateTime fromDate = DateTime.ParseExact(request.From, "dd/MM/yyyy", CultureInfo.InvariantCulture);
+					payments = payments.Where(x => x.PaymentDate.Date >= fromDate).ToList();
 				}
 
 				if (request.To != null) {
-					payments = payments.Where(x => x.PaymentDate <= request.From).ToList();
+					DateTime toDate = DateTime.ParseExact(request.To, "dd/MM/yyyy", CultureInfo.InvariantCulture);
+					payments = payments.Where(x => x.PaymentDate <= toDate).ToList();
 				}
 
 				if (payments == null || !payments.Any()) {

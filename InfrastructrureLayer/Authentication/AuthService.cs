@@ -139,7 +139,7 @@ namespace InfrastructrureLayer.Authentication {
 				var message = new Message(newUser.Email, "Verify email", code);
 				_emailService.SendEmail(message);
 
-				return new AuthResponseDto(true, "Registration successfully");
+				return new AuthResponseDto(true, "Registration successfully. Code has been sent to your email, please check your email");
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
 				return new AuthResponseDto(false, $"Internal server error occurred: {ex.Message}");
