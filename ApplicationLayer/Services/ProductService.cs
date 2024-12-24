@@ -203,7 +203,7 @@ namespace ApplicationLayer.Services {
 					.GetListAsync(x => x.Inactive == request.InActive, includeProperties: "Menu,Category");
 
 				if (!string.IsNullOrEmpty(request.SearchText)) {
-					products = products.Where(x => request.SearchText.Contains(x.Name)).ToList();
+					products = products.Where(x => x.Name.ToLower().Contains(request.SearchText.ToLower())).ToList();
 				}
 
 				if (request.PriceFrom > 0) {
@@ -293,7 +293,7 @@ namespace ApplicationLayer.Services {
 				}
 
 				var productsPagedList = await _unitOfWork.Product
-					.GetPagingAsync(includeProperties: "Menu,Category",
+					.GetPagingAsync(x => x.Inactive, includeProperties: "Menu,Category",
 					pageNumber: request.PageNumber, pageSize: request.PageSize);
 
 				if (!productsPagedList.Item1.Any()) {
