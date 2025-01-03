@@ -6,6 +6,7 @@
 		public int SortOrder { get; set; }
 		public string? ImageUrl { get; set; }
 		public string? MenuPublicId { get; set; }
+		public bool IsDeleted { get; set; }
 
 		public virtual IEnumerable<Product> Products { get; set; }
 	}

@@ -98,6 +98,7 @@ namespace ApplicationLayer.Services {
 										//MenuName = reader.GetValue(8).ToString(),
 										Thumbnail = "https://placehold.co/500x600/png",
 										ThumbnailPublicId = string.Empty,
+										IsDeleted = false,
 									};
 									productList.Add(productDto);
 									//await _unitOfWork.Product.AddAsync(productDto);
@@ -128,6 +129,7 @@ namespace ApplicationLayer.Services {
 		public async Task<ApiResponse<ProductResponse>> CreateAsync(CreateProductRequest request) {
 			try {
 				var productToDb = _mapper.Map<Product>(request);
+				productToDb.IsDeleted = false;
 
 				if (productToDb == null) {
 					return new ApiResponse<ProductResponse>(false, "Internal server error occurred");
@@ -179,16 +181,17 @@ namespace ApplicationLayer.Services {
 
 			if (product == null) { return false; }
 
-			// Handle delete image from cloudinary
-			var deletionParam = new DeletionParams(product.ThumbnailPublicId) {
-				ResourceType = ResourceType.Image,
-			};
-			var deletionResult = await _cloudinary.DestroyAsync(deletionParam);
-			if (deletionResult == null || deletionResult.Result != "ok") { // Delete failed
-				_logger.LogExceptions($"Failed to delete image from Cloudinary with PublicId: {product.ThumbnailPublicId}");
-			}
+			//// Handle delete image from cloudinary
+			//var deletionParam = new DeletionParams(product.ThumbnailPublicId) {
+			//	ResourceType = ResourceType.Image,
+			//};
+			//var deletionResult = await _cloudinary.DestroyAsync(deletionParam);
+			//if (deletionResult == null || deletionResult.Result != "ok") { // Delete failed
+			//	_logger.LogExceptions($"Failed to delete image from Cloudinary with PublicId: {product.ThumbnailPublicId}");
+			//}
 
-			await _unitOfWork.Product.RemoveAsync(product);
+			product.IsDeleted = true;
+			await _unitOfWork.Product.UpdateAsync(product);
 			await _unitOfWork.SaveChangeAsync();
 
 			await _cacheService.RemoveData($"Product_{id}");
@@ -200,7 +203,7 @@ namespace ApplicationLayer.Services {
 		public async Task<ApiResponse<PagedList<ProductResponse>>> FilterAsync(FilterProductRequest request) {
 			try {
 				var products = await _unitOfWork.Product
-					.GetListAsync(x => x.Inactive == request.InActive, includeProperties: "Menu,Category");
+					.GetListAsync(x => x.Inactive == request.InActive && x.IsDeleted == false, includeProperties: "Menu,Category");
 
 				if (!string.IsNullOrEmpty(request.SearchText)) {
 					products = products.Where(x => x.Name.ToLower().Contains(request.SearchText.ToLower())).ToList();
@@ -258,7 +261,7 @@ namespace ApplicationLayer.Services {
 					return new ApiResponse<ProductResponse>(cacheData, true, "Retrieve products successfully");
 				}
 
-				var product = await _unitOfWork.Product.GetAsync(x => x.Id == id, includeProperties: "ProductImages,Menu,Category");
+				var product = await _unitOfWork.Product.GetAsync(x => x.Id == id && x.IsDeleted == false, includeProperties: "ProductImages,Menu,Category");
 
 				if (product == null) {
 					return new ApiResponse<ProductResponse>(false, $"Product with id: {id} not found");
@@ -293,7 +296,7 @@ namespace ApplicationLayer.Services {
 				}
 
 				var productsPagedList = await _unitOfWork.Product
-					.GetPagingAsync(x => x.Inactive, includeProperties: "Menu,Category",
+					.GetPagingAsync(x => x.Inactive == true && x.IsDeleted == false, includeProperties: "Menu,Category",
 					pageNumber: request.PageNumber, pageSize: request.PageSize);
 
 				if (!productsPagedList.Item1.Any()) {
@@ -325,7 +328,7 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<ProductResponse>> UpdateAsync(UpdateProductRequest request) {
 			try {
-				var checkProductFromDb = await _unitOfWork.Product.GetAsync(x => x.Id == request.Id);
+				var checkProductFromDb = await _unitOfWork.Product.GetAsync(x => x.Id == request.Id && x.IsDeleted == false);
 
 				if (checkProductFromDb == null) {
 					return new ApiResponse<ProductResponse>(false, $"Product with id: {request.Id} not found");

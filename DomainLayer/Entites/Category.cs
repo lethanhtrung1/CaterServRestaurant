@@ -5,6 +5,7 @@
 		public string Name { get; set; } = string.Empty;
 		public string? Description { get; set; }
 		public bool Inactive { get; set; }
+		public bool IsDeleted { get; set; }
 		public virtual IEnumerable<Product> Products { get; set; }
 	}
 }

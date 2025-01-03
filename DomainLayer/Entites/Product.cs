@@ -11,7 +11,7 @@
 		public bool Inactive { get; set; }
 		public Guid CategoryId { get; set; }
 		public Guid MenuId { get; set; }
-
+		public bool IsDeleted { get; set; }
 		public Category Category { get; set; }
 		public Menu Menu { get; set; }
 		public virtual IEnumerable<OrderDetail>? OrderDetails { get; set; }

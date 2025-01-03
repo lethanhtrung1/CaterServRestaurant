@@ -23,6 +23,7 @@ namespace ApplicationLayer.Services {
 		public async Task<ApiResponse<CategoryResponseDto>> CreateAsync(CreateCategoryRequest request) {
 			try {
 				var categoryEntity = _mapper.Map<Category>(request);
+				categoryEntity.IsDeleted = false;
 
 				if (categoryEntity == null) {
 					return new ApiResponse<CategoryResponseDto>(false, "Internal server error occurred");
@@ -47,7 +48,8 @@ namespace ApplicationLayer.Services {
 					return false;
 				}
 
-				await _unitOfWork.Category.RemoveAsync(category);
+				category.IsDeleted = true;
+				await _unitOfWork.Category.UpdateAsync(category);
 				await _unitOfWork.SaveChangeAsync();
 				return true;
 			} catch (Exception ex) {
@@ -58,7 +60,7 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<CategoryResponseDto>> GetByCodeAsync(string code) {
 			try {
-				var category = await _unitOfWork.Category.GetAsync(x => x.Code == code);
+				var category = await _unitOfWork.Category.GetAsync(x => x.Code == code && x.IsDeleted == false);
 
 				if (category == null) {
 					return new ApiResponse<CategoryResponseDto>(false, "Category not found");
@@ -75,7 +77,7 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<CategoryResponseDto>> GetByIdAsync(Guid id) {
 			try {
-				var category = await _unitOfWork.Category.GetAsync(x => x.Id == id);
+				var category = await _unitOfWork.Category.GetAsync(x => x.Id == id && x.IsDeleted == false);
 
 				if (category == null) {
 					return new ApiResponse<CategoryResponseDto>(false, "Category not found");
@@ -92,7 +94,7 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<PagedList<CategoryResponseDto>>> GetListAsync(PagingRequest request) {
 			try {
-				var categories = await _unitOfWork.Category.GetListAsync();
+				var categories = await _unitOfWork.Category.GetListAsync(x => x.IsDeleted == false);
 				var categoriesPageList = categories.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize);
 
 				if (categoriesPageList is null || categoriesPageList.Count() == 0) {
@@ -115,7 +117,7 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<List<CategoryResponseDto>>> GetListActiveAsync() {
 			try {
-				var categories = await _unitOfWork.Category.GetListAsync(x => x.Inactive);
+				var categories = await _unitOfWork.Category.GetListAsync(x => x.Inactive && x.IsDeleted == false);
 
 				if (categories is null || categories.Count() == 0) {
 					return new ApiResponse<List<CategoryResponseDto>>(false, "No record available");
@@ -132,7 +134,7 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<CategoryResponseDto>> UpdateAsync(UpdateCategoryRequest request) {
 			try {
-				var categoryFromDb = await _unitOfWork.Category.GetAsync(x => x.Id == request.Id);
+				var categoryFromDb = await _unitOfWork.Category.GetAsync(x => x.Id == request.Id && x.IsDeleted == false);
 
 				if (categoryFromDb == null) {
 					return new ApiResponse<CategoryResponseDto>(false, $"Category with Id: {request.Id} not found");

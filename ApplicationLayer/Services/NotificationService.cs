@@ -31,18 +31,17 @@ namespace ApplicationLayer.Services {
 				Id = Guid.NewGuid(),
 				Title = title,
 				Description = description,
-				Content = content,
+				Content = content + $" được thêm bởi {user.Email}",
 				CreatedDate = DateTime.Now,
-				Status = false, // send
+				IsViewed = false, // send
 				IsDelete = false,
-				//UserId = staffId,
-				UserName = user.UserName!,
+				//UserName = user.UserName!,
 			};
 
 			await _unitOfWork.Notification.AddAsync(notification);
 			await _unitOfWork.SaveChangeAsync();
 
-			await _hubContext.Clients.User(notification.UserName).SendAsync("ReceivedNotification", notification.Title, notification.UserName);
+			await _hubContext.Clients.All.SendAsync("NewNotification", notification);
 		}
 
 		public async Task<bool> DeleteNotification(Guid id) {
@@ -65,7 +64,7 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<PagedList<NotificationDto>>> GetNotificationPaging(GetNotificationRequest request) {
 			var username = _currentUserService.UserName;
-			var notifications = await _unitOfWork.Notification.GetListAsync(x => x.UserName == username && !x.IsDelete);
+			var notifications = (await _unitOfWork.Notification.GetListAsync(x => !x.IsDelete)).OrderByDescending(x => x.CreatedDate);
 
 			if (notifications == null || !notifications.Any()) {
 				return new ApiResponse<PagedList<NotificationDto>>(false, "No record available");
@@ -91,7 +90,7 @@ namespace ApplicationLayer.Services {
 			var notification = await _unitOfWork.Notification.GetAsync(x => x.Id == id && !x.IsDelete);
 			if (notification == null) return false;
 
-			notification.Status = true;
+			notification.IsViewed = true;
 			notification.SendTime = DateTime.UtcNow;
 			notification.UpdatedDate = DateTime.UtcNow;
 

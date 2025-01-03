@@ -37,6 +37,7 @@ namespace ApplicationLayer.Services {
 		public async Task<ApiResponse<MenuResponse>> CreateAsync(CreateMenuRequest request) {
 			try {
 				var menuToDb = _mapper.Map<Menu>(request);
+				menuToDb.IsDeleted = false;
 
 				// Hanle upload image
 				var file = request.File;
@@ -72,16 +73,17 @@ namespace ApplicationLayer.Services {
 
 				if (menu == null) { return false; }
 
-				// Handle delete image from cloudinary
-				var deletionParam = new DeletionParams(menu.MenuPublicId) {
-					ResourceType = ResourceType.Image,
-				};
-				var deletionResult = await _cloudinary.DestroyAsync(deletionParam);
-				if (deletionResult == null || deletionResult.Result != "ok") { // Delete failed
-					_logger.LogExceptions($"Failed to delete image from Cloudinary with PublicId: {menu.MenuPublicId}");
-				}
+				//// Handle delete image from cloudinary
+				//var deletionParam = new DeletionParams(menu.MenuPublicId) {
+				//	ResourceType = ResourceType.Image,
+				//};
+				//var deletionResult = await _cloudinary.DestroyAsync(deletionParam);
+				//if (deletionResult == null || deletionResult.Result != "ok") { // Delete failed
+				//	_logger.LogExceptions($"Failed to delete image from Cloudinary with PublicId: {menu.MenuPublicId}");
+				//}
 
-				await _unitOfWork.Menu.RemoveAsync(menu);
+				menu.IsDeleted = true;
+				await _unitOfWork.Menu.UpdateAsync(menu);
 				await _unitOfWork.SaveChangeAsync();
 
 				return true;
@@ -93,7 +95,7 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<MenuResponse>> GetAsync(Guid id) {
 			try {
-				var menu = await _unitOfWork.Menu.GetAsync(x => x.Id == id);
+				var menu = await _unitOfWork.Menu.GetAsync(x => x.Id == id && x.Inactive == false);
 
 				if (menu is null) {
 					return new ApiResponse<MenuResponse>(false, $"Menu with Id: {id} not exist");
@@ -110,7 +112,7 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<PagedList<MenuResponse>>> GetListAsync(PagingRequest request) {
 			try {
-				var menus = await _unitOfWork.Menu.GetListAsync();
+				var menus = await _unitOfWork.Menu.GetListAsync(x => x.IsDeleted == false);
 				var menuPagedList = menus.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize);
 
 				if (menuPagedList is null || !menuPagedList.Any()) {
@@ -131,7 +133,7 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<List<MenuResponse>>> GetListActiveAsync() {
 			try {
-				var menus = await _unitOfWork.Menu.GetListAsync(x => x.Inactive);
+				var menus = await _unitOfWork.Menu.GetListAsync(x => x.Inactive == true && x.IsDeleted == false);
 
 				if (menus is null || !menus.Any()) {
 					return new ApiResponse<List<MenuResponse>>(false, "No record available");
@@ -148,7 +150,7 @@ namespace ApplicationLayer.Services {
 
 		public async Task<ApiResponse<MenuResponse>> UpdateAsync(UpdateMenuRequest request) {
 			try {
-				var menuFromDb = await _unitOfWork.Menu.GetAsync(x => x.Id == request.Id);
+				var menuFromDb = await _unitOfWork.Menu.GetAsync(x => x.Id == request.Id && x.IsDeleted == false);
 
 				if (menuFromDb is null) {
 					return new ApiResponse<MenuResponse>(false, $"Menu with Id: {request.Id} not exist");

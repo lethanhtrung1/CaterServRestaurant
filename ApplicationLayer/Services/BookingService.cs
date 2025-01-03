@@ -149,7 +149,7 @@ namespace ApplicationLayer.Services {
 
 				var bookingToDb = _mapper.Map<Booking>(request);
 				bookingToDb.BookingDate = DateTime.Now;
-				bookingToDb.Status = BookingStatus.Accept;
+				bookingToDb.Status = BookingStatus.Process;
 
 				var customer = await _unitOfWork.ApplicationUser.GetAsync(x => x.UserName == request.CustomerName);
 				if (!string.IsNullOrEmpty(customer?.Id)) {

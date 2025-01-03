@@ -15,10 +15,9 @@ namespace WebAPI.Extensions {
 		}
 
 		public static void SeedDatabase(this IApplicationBuilder app) {
-			using (var scope = app.ApplicationServices.CreateScope()) {
-				var dbInitializer = scope.ServiceProvider.GetRequiredService<IDbInitializer>();
-				dbInitializer.Initialize();
-			}
+			using var scope = app.ApplicationServices.CreateScope();
+			var dbInitializer = scope.ServiceProvider.GetRequiredService<IDbInitializer>();
+			dbInitializer.Initialize();
 		}
 	}
 }

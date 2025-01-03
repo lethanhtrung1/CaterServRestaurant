@@ -5,6 +5,6 @@
 		public string? Description { get; set; }
 		public string? Content { get; set; }
 		public DateTime SendTime { get; set; }
-		public bool Status { get; set; }
+		public bool IsViewed { get; set; }
 	}
 }
