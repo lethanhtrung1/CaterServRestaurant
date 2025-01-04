@@ -408,6 +408,51 @@ namespace ApplicationLayer.Services {
 			}
 		}
 
+		//public async Task<ApiResponse<OrderResponse>> AddOrderOrderDetail(CreateOrderDetailRequest request) {
+		//	try {
+		//		var checkOrder = await _unitOfWork.Order.GetAsync(x => x.Id == request.OrderId);
+		//		if (checkOrder == null) {
+		//			return new ApiResponse<OrderResponse>(false, "Order not found");
+		//		}
+
+		//		var product = await _unitOfWork.Product.GetAsync(x => x.Id == request.ProductId);
+		//		if (product == null) {
+		//			return new ApiResponse<OrderResponse>(false, "Product not found");
+		//		}
+
+		//		var newOrderDetail = new OrderDetail {
+		//			Id = Guid.NewGuid(),
+		//			OrderId = request.OrderId,
+		//			ProductId = product.Id,
+		//			ProductName = product.Name,
+		//			Quantity = request.Quantity,
+		//			Price = product.SellingPrice,
+		//			TotalPrice = request.Quantity * product.SellingPrice,
+		//			UnitName = product.UnitName!,
+		//			CreatedAt = DateTime.Now,
+		//		};
+
+		//		await _unitOfWork.OrderDetail.AddAsync(newOrderDetail);
+		//		checkOrder.TotalAmount += newOrderDetail.TotalPrice;
+		//		checkOrder.OrderAmount = checkOrder.TotalAmount;
+		//		checkOrder.LastUpdatedAt = DateTime.Now;
+		//		await _unitOfWork.Order.UpdateAsync(checkOrder);
+		//		await _unitOfWork.SaveChangeAsync();
+
+		//		var orderDetails = await _unitOfWork.OrderDetail.GetListAsync(x => x.OrderId == checkOrder.Id);
+
+		//		var orderDetailsResponse = _mapper.Map<List<OrderDetailResponse>>(orderDetails);
+		//		var orderResponse = _mapper.Map<OrderResponse>(checkOrder);
+
+		//		orderResponse.OrderDetails = orderDetailsResponse;
+
+		//		return new ApiResponse<OrderResponse>(orderResponse, true, "Success");
+		//	} catch (Exception ex) {
+		//		_logger.LogExceptions(ex);
+		//		return new ApiResponse<OrderResponse>(false, $"Internal server error occurred: {ex.Message}");
+		//	}
+		//}
+
 		public async Task<ApiResponse<OrderResponse>> AddOrderOrderDetail(CreateOrderDetailRequest request) {
 			try {
 				var checkOrder = await _unitOfWork.Order.GetAsync(x => x.Id == request.OrderId);
@@ -415,38 +460,43 @@ namespace ApplicationLayer.Services {
 					return new ApiResponse<OrderResponse>(false, "Order not found");
 				}
 
-				var product = await _unitOfWork.Product.GetAsync(x => x.Id == request.ProductId);
-				if (product == null) {
-					return new ApiResponse<OrderResponse>(false, "Product not found");
+				if (request.ProductId?.Any() == true) {
+					foreach (var productId in request.ProductId) {
+						var product = await _unitOfWork.Product.GetAsync(x => x.Id == productId);
+
+						if (product == null) {
+							return new ApiResponse<OrderResponse>(false, "Product not found");
+						}
+						var newOrderDetail = new OrderDetail {
+							Id = Guid.NewGuid(),
+							OrderId = request.OrderId,
+							ProductId = product.Id,
+							ProductName = product.Name,
+							Quantity = request.Quantity,
+							Price = product.SellingPrice,
+							TotalPrice = request.Quantity * product.SellingPrice,
+							UnitName = product.UnitName!,
+							CreatedAt = DateTime.Now,
+						};
+						await _unitOfWork.OrderDetail.AddAsync(newOrderDetail);
+						checkOrder.TotalAmount += newOrderDetail.TotalPrice;
+						checkOrder.OrderAmount = checkOrder.TotalAmount;
+					}
+
+					checkOrder.LastUpdatedAt = DateTime.Now;
+					await _unitOfWork.Order.UpdateAsync(checkOrder);
+					await _unitOfWork.SaveChangeAsync();
+
+					var orderDetails = await _unitOfWork.OrderDetail.GetListAsync(x => x.OrderId == checkOrder.Id);
+
+					var orderDetailsResponse = _mapper.Map<List<OrderDetailResponse>>(orderDetails);
+					var orderResponse = _mapper.Map<OrderResponse>(checkOrder);
+
+					orderResponse.OrderDetails = orderDetailsResponse;
+
+					return new ApiResponse<OrderResponse>(orderResponse, true, "Success");
 				}
-
-				var newOrderDetail = new OrderDetail {
-					Id = Guid.NewGuid(),
-					OrderId = request.OrderId,
-					ProductId = product.Id,
-					ProductName = product.Name,
-					Quantity = request.Quantity,
-					Price = product.SellingPrice,
-					TotalPrice = request.Quantity * product.SellingPrice,
-					UnitName = product.UnitName!,
-					CreatedAt = DateTime.Now,
-				};
-
-				await _unitOfWork.OrderDetail.AddAsync(newOrderDetail);
-				checkOrder.TotalAmount += newOrderDetail.TotalPrice;
-				checkOrder.OrderAmount = checkOrder.TotalAmount;
-				checkOrder.LastUpdatedAt = DateTime.Now;
-				await _unitOfWork.Order.UpdateAsync(checkOrder);
-				await _unitOfWork.SaveChangeAsync();
-
-				var orderDetails = await _unitOfWork.OrderDetail.GetListAsync(x => x.OrderId == checkOrder.Id);
-
-				var orderDetailsResponse = _mapper.Map<List<OrderDetailResponse>>(orderDetails);
-				var orderResponse = _mapper.Map<OrderResponse>(checkOrder);
-
-				orderResponse.OrderDetails = orderDetailsResponse;
-
-				return new ApiResponse<OrderResponse>(orderResponse, true, "Success");
+				return new ApiResponse<OrderResponse>(false, "Product not found");
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
 				return new ApiResponse<OrderResponse>(false, $"Internal server error occurred: {ex.Message}");
