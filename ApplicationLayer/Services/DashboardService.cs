@@ -28,13 +28,14 @@ namespace ApplicationLayer.Services {
 				DateTime endDate = DateTime.UtcNow;
 
 				// Get total orders
-				var orders = await _unitOfWork.Order.GetListAsync(x => x.CreatedDate >= startDate && x.CreatedDate <= endDate);
+				var orders = await _unitOfWork.Order
+					.GetListAsync(x => x.CreatedDate.Date >= startDate.Date && x.CreatedDate.Date <= endDate.Date);
 				result.TotalOrder = orders.Count();
 
 				// Get total payments
 				var payments = await _unitOfWork.Payment.GetListAsync(
 					x => x.PaymentStatus == PaymentStatus.Completed &&
-						 x.PaymentDate >= startDate && x.PaymentDate <= endDate);
+						 x.PaymentDate.Date >= startDate.Date && x.PaymentDate.Date <= endDate.Date);
 				result.TotalRevenueAdmount = payments.Sum(x => x.RequiredAmount) ?? 0;
 
 				// Line Chart
@@ -42,7 +43,8 @@ namespace ApplicationLayer.Services {
 
 				// Get order details
 				var orderDetails = await _unitOfWork.OrderDetail.GetListAsync(
-					x => x.CreatedAt >= startDate && x.CreatedAt <= endDate, includeProperties: "Order,Product,Product.Menu,Product.Category");
+					x => x.CreatedAt.Date >= startDate.Date && x.CreatedAt.Date <= endDate.Date,
+					includeProperties: "Order,Product,Product.Menu,Product.Category");
 
 				var totalSum = orderDetails.Where(x => x.Order.OrderStatus == OrderStatus.Completed).Sum(x => x.TotalPrice);
 

@@ -131,6 +131,20 @@ namespace ApplicationLayer.Services {
 
 				// Map result to response and send notification
 				var result = _mapper.Map<BookingResponse>(bookingToDb);
+				result.Tables = new List<BookingTableResponse>();
+
+				if (request.TableIds?.Any() == true) {
+					foreach (var tableId in request.TableIds) {
+						var table = await _unitOfWork.Table.GetAsync(x => x.Id == tableId);
+						var bookingTableRes = new BookingTableResponse {
+							TableId = tableId,
+							Name = table.Name,
+							AreaName = table.AreaName,
+						};
+						result.Tables.Add(bookingTableRes);
+					}
+				}
+
 				await _hubContext.Clients.All.SendAsync("NotificationBooking", result);
 
 				return new ApiResponse<BookingResponse>(result, true, "Created successfully");
