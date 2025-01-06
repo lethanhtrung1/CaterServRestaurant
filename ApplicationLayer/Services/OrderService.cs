@@ -460,9 +460,9 @@ namespace ApplicationLayer.Services {
 					return new ApiResponse<OrderResponse>(false, "Order not found");
 				}
 
-				if (request.ProductId?.Any() == true) {
-					foreach (var productId in request.ProductId) {
-						var product = await _unitOfWork.Product.GetAsync(x => x.Id == productId);
+				if (request.Products?.Any() == true) {
+					foreach (var product in request.Products) {
+						var productFromDb = await _unitOfWork.Product.GetAsync(x => x.Id == product.ProductId);
 
 						if (product == null) {
 							return new ApiResponse<OrderResponse>(false, "Product not found");
@@ -470,12 +470,12 @@ namespace ApplicationLayer.Services {
 						var newOrderDetail = new OrderDetail {
 							Id = Guid.NewGuid(),
 							OrderId = request.OrderId,
-							ProductId = product.Id,
-							ProductName = product.Name,
-							Quantity = request.Quantity,
-							Price = product.SellingPrice,
-							TotalPrice = request.Quantity * product.SellingPrice,
-							UnitName = product.UnitName!,
+							ProductId = productFromDb.Id,
+							ProductName = productFromDb.Name,
+							Quantity = product.Quantity,
+							Price = productFromDb.SellingPrice,
+							TotalPrice = product.Quantity * productFromDb.SellingPrice,
+							UnitName = productFromDb.UnitName!,
 							CreatedAt = DateTime.Now,
 						};
 						await _unitOfWork.OrderDetail.AddAsync(newOrderDetail);
