@@ -2,7 +2,7 @@
 	public class Order : BaseEntity {
 		public Guid? BookingId { get; set; }
 		/// <summary>
-		/// Loại đơn hàng (1 - phục vụ tại bàn, 2 - mang về, 3 - giao hàng)
+		/// Loại đơn hàng (1 - phục vụ tại bàn, 2 - mang về, giao hàng)
 		/// </summary>
 		public int OrderType { get; set; }
 		public string? OrderStatus { get; set; }

@@ -12,6 +12,7 @@ using DomainLayer.Caching;
 using DomainLayer.Common;
 using DomainLayer.Entites;
 using ExcelDataReader;
+using Hangfire;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 
@@ -135,44 +136,66 @@ namespace ApplicationLayer.Services {
 					return new ApiResponse<ProductResponse>(false, "Internal server error occurred");
 				}
 
-				// Hanle upload image
-				if (request.File != null) {
-					var file = request.File;
-					var uploadResult = new ImageUploadResult();
-					if (file != null) {
-						using (var stream = file.OpenReadStream()) {
-							var uploadParam = new ImageUploadParams() {
-								File = new FileDescription(file.Name, stream),
-								Folder = $"{_cloudinaryOptions.Folder}/Product"
-							};
-							uploadResult = await _cloudinary.UploadAsync(uploadParam);
-						}
-					}
-					// Upload success
-					productToDb.Thumbnail = uploadResult.Url.ToString();
-					productToDb.ThumbnailPublicId = uploadResult.PublicId;
-				}
-
+				await _unitOfWork.Product.BeginTransactionAsync();
 				await _unitOfWork.Product.AddAsync(productToDb);
 				await _unitOfWork.SaveChangeAsync();
 
+				// Background job to upload image
+				if (request.File != null) {
+					//BackgroundJob.Enqueue(() => UploadImageAndUpdateProduct(productToDb.Id, request.File));
+					using (var memoryStream = new MemoryStream()) {
+						await request.File.CopyToAsync(memoryStream);
+						var base64File = Convert.ToBase64String(memoryStream.ToArray());
+						BackgroundJob.Enqueue(() => UploadImageAndUpdateProduct(productToDb.Id, base64File, request.File.FileName));
+					}
+				}
+
+				await _unitOfWork.Product.EndTransactionAsync();
+
+				// Remove cache
 				await _cacheService.RemoveData($"Product_{productToDb.Id}");
 				await _cacheService.RemoveMultipleKeysAsync("Products:*");
 
+				// Map response
 				var menu = await _unitOfWork.Menu.GetAsync(x => x.Id == productToDb.MenuId);
 				var category = await _unitOfWork.Category.GetAsync(x => x.Id == productToDb.CategoryId);
 
-				var productMenu = _mapper.Map<ProductMenuDto>(menu);
-				var productCategory = _mapper.Map<ProductCategoryDto>(category);
-
 				var response = _mapper.Map<ProductResponse>(productToDb);
-				response.MenuDto = productMenu;
-				response.CategoryDto = productCategory;
+				response.MenuDto = _mapper.Map<ProductMenuDto>(menu);
+				response.CategoryDto = _mapper.Map<ProductCategoryDto>(category);
 
 				return new ApiResponse<ProductResponse>(response, true, "Product created successfully");
 			} catch (Exception ex) {
 				_logger.LogExceptions(ex);
+				await _unitOfWork.Product.RollBackTransactionAsync();
 				return new ApiResponse<ProductResponse>(false, $"Internal server error occurred: {ex.Message}");
+			}
+		}
+
+		[AutomaticRetry(Attempts = 3)] // Retry 3 times if failed
+		public async Task UploadImageAndUpdateProduct(Guid productId, string base64File, string fileName) {
+			try {
+				var fileBytes = Convert.FromBase64String(base64File);
+				using (var stream = new MemoryStream(fileBytes)) {
+					var uploadParams = new ImageUploadParams {
+						File = new FileDescription(fileName, stream),
+						Folder = $"{_cloudinaryOptions.Folder}/Product"
+					};
+					var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+
+					if (uploadResult != null) {
+						var product = await _unitOfWork.Product.GetAsync(x => x.Id == productId);
+						if (product != null) {
+							product.Thumbnail = uploadResult.Url.ToString();
+							product.ThumbnailPublicId = uploadResult.PublicId;
+
+							await _unitOfWork.SaveChangeAsync();
+						}
+					}
+				}
+			} catch (Exception ex) {
+				_logger.LogExceptions(ex);
+				throw;
 			}
 		}
 

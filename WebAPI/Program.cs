@@ -1,6 +1,7 @@
 using ApplicationLayer.DependencyInjection;
 using ApplicationLayer.Hubs;
 using ApplicationLayer.Options;
+using Hangfire;
 using InfrastructrureLayer.DependencyInjection;
 using WebAPI.Extensions;
 
@@ -62,9 +63,9 @@ public class Program {
 		app.UseAuthorization();
 
 		app.MapHub<NotificationHub>("/notificationHub");
-		//app.MapHub<NotificationHub>("/dashboardHub");
 
-		//app.UseHangfireDashboard();
+		app.UseHangfireDashboard();
+		app.UseHangfireDashboard("/hangfire");
 
 		app.MapControllers();
 

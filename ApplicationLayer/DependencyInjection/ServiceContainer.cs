@@ -3,6 +3,8 @@ using ApplicationLayer.Interfaces;
 using ApplicationLayer.MappingConfigs;
 using ApplicationLayer.Services;
 using AutoMapper;
+using Hangfire;
+using Hangfire.SqlServer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -38,10 +40,19 @@ namespace ApplicationLayer.DependencyInjection {
 			services.AddScoped<IDashboardService, DashboardService>();
 			services.AddScoped<IUserCouponService, UserCouponService>();
 
-			//services.AddHangfire(config => {
-			//	config.UseSqlServerStorage(configuration.GetConnectionString("DefaultConnection"));
-			//});
-			//services.AddHangfireServer();
+			services.AddHangfire(config => config
+				.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+				.UseSimpleAssemblyNameTypeSerializer()
+				.UseRecommendedSerializerSettings()
+				.UseSqlServerStorage(configuration.GetConnectionString("DefaultConnection"), new SqlServerStorageOptions {
+					CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+					SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+					QueuePollInterval = TimeSpan.Zero,
+					UseRecommendedIsolationLevel = true,
+					DisableGlobalLocks = true
+				})
+			);
+			services.AddHangfireServer();
 
 			return services;
 		}
