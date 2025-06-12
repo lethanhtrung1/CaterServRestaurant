@@ -2,7 +2,19 @@
 
 ## 📌 Overview
 
-This is a backend project built with **ASP.NET Core Web API**, designed to provide RESTful services for [brief description of your app – e.g., product management, order processing, HR system, etc.].
+This project is a **Restaurant Management System** built with **ASP.NET Core Web API**. It provides backend services for managing restaurant operations, allowing customers to:
+
+-   Book tables
+-   Place food orders
+-   Make payments
+-   Track order status
+
+The system also includes features for admins/staff to manage:
+
+-   Menu items
+-   Table availability
+-   Customer orders
+-   Payment status
 
 ## ⚙️ Technologies Used
 
