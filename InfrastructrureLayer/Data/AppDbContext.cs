@@ -29,7 +29,7 @@ namespace InfrastructrureLayer.Data {
 		public virtual DbSet<Merchant> Merchants { get; set; }
 		public virtual DbSet<Review> Reviews { get; set; }
 		public virtual DbSet<UserCoupon> UserCoupons { get; set; }
-		//public virtual DbSet<Notification> Notifications { get; set; }
+		public virtual DbSet<Notification> Notifications { get; set; }
 
 		#endregion
 
