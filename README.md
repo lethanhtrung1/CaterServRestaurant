@@ -38,14 +38,13 @@ The system also includes features for admins/staff to manage:
 
 🚀 Getting Started
 
-1. Clone the repository
-   git clone https://github.com/your-username/your-repo-name.git
-   cd your-repo-name
+1. Clone the repository:
+   clone project -> cd repo
 
 2. Configure the connection string
 
-3. Apply migrations and create the database
+3. Apply migrations and create the database:
    dotnet ef database update
 
-4. Run the application
+4. Run the application:
    dotnet run --project WebApi
