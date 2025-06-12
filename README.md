@@ -6,7 +6,7 @@ This is a backend project built with **ASP.NET Core Web API**, designed to provi
 
 ## ⚙️ Technologies Used
 
--   ASP.NET Core (>= x.x)
+-   ASP.NET Core 8
 -   Entity Framework Core
 -   SQL Server
 -   AutoMapper
